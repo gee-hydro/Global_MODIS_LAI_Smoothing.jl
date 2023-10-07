@@ -5,10 +5,9 @@ using DataFrames
 using RTableTools
 using ProgressMeter
 
+using DiskArrayTools: diskstack, DiskArrayTools
 # using Pkg; Pkg.activate(".")
 
-include("main_nc.jl")
-include("main_stars.jl")
 
 dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
 files = dir(dir_root, ".nc\$")
@@ -34,39 +33,29 @@ _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
 dates = _dateInfo.date
 
 
-include("main_whit.jl")
+
 
 chunk = "2_4"
 d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.chunk.==chunk), :]
 
+fs = d.file
+
+## 设计一个全球计算框架
+
+using YAXArrays
 
 
+m = MFDataset(fs)
+# ncs = nc_open.(m.fs)
 
-using NCDatasets
 nc = NCDataset(d.file)
 nc = nc_open(d.file)
 
+ds = open_dataset.(d.file)
 
+cube = concatenatecubes(ds, Dim{:time})
 
-
-
-
-
-
-
-
-
-
-
-
-
-for chunk in all_chunks
-  d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.chunk.==chunk), :]  
-  
-  try
-    cal_chunk_lambda(d; fact=4)  
-  catch ex
-    @show ex
-    @show d
-  end
-end
+diskstack()
+# include("main_nc.jl")
+# include("main_stars.jl")
+# include("main_whit.jl")
