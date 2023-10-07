@@ -1,0 +1,90 @@
+```{julia}
+@everywhere begin
+  using ParallelUtilities
+  using SharedArrays
+  using Distributed  
+end
+```
+
+```{julia}
+using ParallelUtilities
+using SharedArrays
+using Distributed
+```
+
+```{julia}
+addprocs(4)
+```
+
+```{julia}
+@everywhere function initialize_localpart(s, sleeptime)
+    for ind in localindices(s)
+        sleep(sleeptime)
+        s[ind] = ind
+    end
+end
+
+@everywhere function initializenode_sharedarray(sleeptime)
+    # obtain the workers on the local machine
+    pids = ParallelUtilities.workers_myhost()
+
+    # Create a shared array spread across the workers on that node
+    s = SharedArray{Int}((2_000,), pids = pids)
+
+    # spawn remote tasks to initialize the local part of the shared array
+    @sync for p in pids
+        @spawnat p initialize_localpart(s, sleeptime)
+    end
+    return sdata(s)
+end
+
+
+function main_sharedarray(sleeptime)
+    # obtain the workerpool with one process on each node
+    pool = ParallelUtilities.workerpool_nodes()
+
+    # obtain the number of workers in the pool.
+    nw_node = nworkers(pool)
+
+    # Evaluate the parallel mapreduce
+    pmapreduce(x -> initializenode_sharedarray(sleeptime), hcat, pool, 1:nw_node)
+end
+```
+
+```{julia}
+function initialize_serial(sleeptime)
+    pids = ParallelUtilities.workers_myhost()
+    s = Array{Int}(undef, 2_000)
+    for ind in eachindex(s)
+        sleep(sleeptime)
+        s[ind] = ind
+    end
+    return sdata(s)
+end
+
+function main_serial(sleeptime)
+    pool = ParallelUtilities.workerpool_nodes()
+    nw_node = nworkers(pool)
+    mapreduce(x -> initialize_serial(sleeptime), hcat, 1:nw_node)
+end
+```
+
+```{julia}
+function compare_with_serial()
+    # precompile
+    main_serial(0)
+    main_sharedarray(0)
+
+    # time
+    println("Testing serial")
+    A = @time main_serial(5e-3)
+    println("Testing sharedarray")
+    B = @time main_sharedarray(5e-3)
+
+    println("Results match : ", A == B)
+end
+```
+
+```{julia}
+compare_with_serial()
+```

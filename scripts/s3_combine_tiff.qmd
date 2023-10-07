@@ -1,0 +1,58 @@
+```{julia}
+using Stars
+using Ipaper
+
+include("./main_stars.jl")
+
+period = "2010-2014"
+method = "cv"
+
+fs = dir("Z:/GitHub/jl-spatial/Whittaker2.jl/OUTPUT/lambda_calib/method_$method/$period", ".tif\$")
+
+length(fs)
+```
+
+
+```{julia}
+range = [-180, -60, 180, 90]
+box = bbox(range...)
+lon, lat = bbox2xy(box)
+
+A = zeros(Float32, length(lon), length(lat))
+R = rast(A, box);
+
+obj_size(A)
+
+```
+
+```{julia}
+@time @showprogress for f in fs
+  try
+    r = st_read(f, 1)
+    b = st_bbox(r)
+    ilon, ilat = overlapIndex_bbox(b, box);
+    R.A[ilon, ilat] .= r.A
+  catch
+    println("Error in file<$f>")
+  end
+end
+
+st_write(R, "$(method)_$(period)_lambda_global.tif")
+```
+
+## 绘图
+
+```{r}
+library(terra)
+library(Ipaper)
+
+method = 'cv'
+period = '2010-2014'
+r = rast(glue::glue("{method}_{period}_lambda_global.tif"))
+polys = vect("scripts/Project_Global_LAI_smoothing/data/shp/modis_grids.shp")
+
+write_fig({
+  plot(r)
+  plot(polys, add = TRUE)
+}, glue::glue('Rplot_{method}_{period}.pdf'), 10, 5, show=F)
+```

@@ -1,0 +1,125 @@
+```{julia}
+using Ipaper
+using NetCDFTools
+using Distributed
+using DataFrames
+using RTableTools
+using ProgressMeter
+
+include("main_nc.jl")
+include("main_stars.jl")
+
+dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
+files = dir(dir_root, ".nc\$")
+
+dateInfo = fread("data/MODIS_LAI_dateInfo.csv")
+
+years  = @pipe basename.(files) |> str_extract("\\d{4}") |> parse.(Int, _)
+chunks = @pipe basename.(files) |> str_extract(r"(?<=_)\d_\d")
+
+info = DataFrame(; year=years, chunk=chunks, file = files)
+
+# 计算lambda的分组
+info_group = DataFrame(;
+  year_min = [2000, 2005, 2010, 2015, 2018],
+  year_max = [2004, 2009, 2014, 2019, 2022]
+)
+
+chunks = unique(chunks)
+
+k = 5
+year_min, year_max = info_group[k, [:year_min, :year_max]]
+_dateInfo = @pipe dateInfo |> _[(year_min .<= _.year .<= year_max), :]
+dates = _dateInfo.date
+```
+
+- `2000-2004`
+- `2005-2009`
+- `2010-2014`
+- `2015-2019`
+- `2018-2022`: 只保留2020-2022的部分
+
+# 1. 检查数据完整性
+
+# 2. 计算 lambda
+
+## 2.1. 设计计算框架
+
+```{julia}
+# addprocs(8)
+
+@everywhere begin
+  using NetCDFTools
+  using Ipaper
+  using Whittaker2
+  using ProgressMeter
+  # using Ipaper
+end
+
+```
+
+> 已完成
+
+```{julia, eval=FALSE}
+d = @pipe info |> _[(year_min .<= _.year .<= year_max) .&& (_.chunk .=="2_3"), :]
+include("main_nc.jl")
+include("main_stars.jl")
+include("main_whit.jl")
+
+cal_chunk_lambda(d; fact=4)
+# using Plots
+# plot(r_LAI[:, :, 26]; clims = (0, 20))
+```
+
+
+## 2.2. 测试qcFUN
+
+```{julia}
+using Stars
+# st_write(r_LAI, "r_LAI.tif")
+# st_write(r_QC, "r_QC.tif")
+
+@time begin
+  r_LAI = st_read("scripts/Project_Global_LAI_smoothing/r_LAI.tif")
+  r_QC = st_read("scripts/Project_Global_LAI_smoothing/r_QC.tif")
+end
+```
+
+## 计算权重
+
+```{julia}
+# include("main_whit.jl")
+
+
+# st_write(r, "a.tif")
+# r2 = abind(r...)
+
+# @profview 
+# smooth_whit(_y, _qc, dates; adj_factor=2)
+# lambda_cv
+# w
+# l = qc_FparLai(UInt8.(0:255))
+# DataFrame(; qc = 0:255, w =l[1], flag=l[2])
+```
+
+
+### 生成测试变量
+
+
+## 2.3. 绘图
+
+```{r}
+library(Ipaper)
+library(terra)
+library(sf2)
+
+# f = "z:/MODIS/Terra_LAI_v061_nc/MOD15A2H_v061-raw2-LAI_240deg_global_2001_2_3.nc"
+f = "a.tif"
+r = rast(f)
+
+shp = vect(shp_continent)
+write_fig({
+  plot(r[[1]], range = c(0, 20))
+  plot(shp, add = TRUE)
+}, 'd:/Rplot.pdf', 10, 5)
+```

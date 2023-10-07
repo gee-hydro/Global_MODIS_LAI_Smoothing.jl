@@ -1,0 +1,87 @@
+```{julia}
+using Ipaper
+using NetCDFTools
+using Distributed
+using DataFrames
+using RTableTools
+using ProgressMeter
+
+include("main_nc.jl")
+
+dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
+files = dir(dir_root, ".nc\$")
+
+years  = @pipe basename.(files) |> str_extract("\\d{4}") |> parse.(Int, _)
+chunks = @pipe basename.(files) |> str_extract(r"(?<=_)\d_\d")
+
+info = DataFrame(; year=years, chunk=chunks, file = files)
+
+# 计算lambda的分组
+info_group = DataFrame(;
+  year_min = [2000, 2005, 2010, 2015, 2018],
+  year_max = [2004, 2009, 2014, 2019, 2022]
+)
+```
+
+- `2000-2004`: 16 * 5 = 80
+
+# 15 * 16 = 240
+
+
+- `2005-2009`: 
+- `2010-2014`: 
+- `2015-2019`: 
+- `2018-2022`: 只保留2020-2022的部分
+
+
+
+# 1. 检查数据完整性
+
+## 1.1. 合并到全球
+
+```{julia}
+years = 2000:2022
+# years = 2015:2016
+
+merge_first_img(info, years, "LAI")
+merge_first_img(info, years, "QcExtra")
+# @time data_LAI = pio_nc_read(fs, "LAI"; ind);
+# @time data_QC = pio_nc_read(fs, "QcExtra"; ind);
+# l_fs = vec_split(files, chunks)
+# l_box2 = get_box2(l_fs)
+```
+
+## 1.2. 绘图
+
+```{r}
+library(Ipaper)
+library(terra)
+library(sf2)
+
+shp = vect(shp_continent)
+fs = dir2("data", '*.tif')
+fs %<>% .[grep("2015|2016", .)]
+
+lst = foreach(f = fs, i = icount()) %do% {
+  fout = gsub(".tif", ".pdf", f)
+  # if (file.exists(fout)) return()
+  print(fout)
+  r = rast(f)
+
+  write_fig({{
+    plot(r) # , range = c(0, 70)
+    plot(shp, add = TRUE)
+  }, fout, 10, 5, show=T)
+}
+
+```
+
+# 2. 设计计算框架
+
+```{julia}
+k = 1
+year_min, year_max = info_group[k, [:year_min, :year_max]]
+d = @pipe info |> _[(year_min .<= _.year .<= year_max) .&& (_.chunk .=="2_3"), :]
+
+fs = d.file
+```

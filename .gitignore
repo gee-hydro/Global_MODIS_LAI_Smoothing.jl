@@ -1,0 +1,9 @@
+*.tif
+*.nc
+*.zarr
+data
+INPUT
+*.db
+Manifest.toml
+.vdoc.jl
+temp

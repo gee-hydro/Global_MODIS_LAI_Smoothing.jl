@@ -1,0 +1,172 @@
+```{julia}
+using Ipaper
+using NetCDFTools
+using Distributed
+using DataFrames
+using RTableTools
+using ProgressMeter
+
+include("../main_nc.jl")
+include("../main_stars.jl")
+
+dir_root = path_mnt("z:/MODIS/Terra_LAI_v061_nc/")
+files = dir(dir_root, ".nc\$")
+
+dateInfo = fread("data/MODIS_LAI_dateInfo.csv")
+
+years  = @pipe basename.(files) |> str_extract("\\d{4}") |> parse.(Int, _)
+
+chunks = @pipe basename.(files) |> str_extract(r"(?<=_)\d_\d")
+
+info = DataFrame(; year=years, chunk=chunks, file = files)
+
+# 计算lambda的分组
+info_group = DataFrame(;
+  year_min = [2000, 2005, 2010, 2015, 2018],
+  year_max = [2004, 2009, 2014, 2019, 2022]
+)
+
+chunks = unique(chunks)
+
+k = 5
+year_min, year_max = info_group[k, [:year_min, :year_max]]
+_dateInfo = @pipe dateInfo |> _[(year_min .<= _.year .<= year_max), :]
+dates = _dateInfo.date
+```
+
+- `2000-2004`
+- `2005-2009`
+- `2010-2014`
+- `2015-2019`
+- `2018-2022`: 只保留2020-2022的部分
+
+## 0.1. 尝试将数据修改为Zarr
+
+
+```{julia}
+using Zarr, YAXArrays
+using NetCDF
+## 文件大概有10G
+d = @pipe info |> _[(year_min .<= _.year .<= year_max) .&& (_.chunk .=="2_3"), :]
+f = d.file[1]
+```
+
+```{julia}
+nc = nc_open(f)
+@time LAI = nc["LAI"][:];
+```
+
+
+```{julia}
+@time ds = open_dataset(f)
+```
+
+```{julia}
+include("../main_zarr.jl")
+chunksize(ds[1])
+
+## need to rebuild dims
+_year = @pipe str_extract(basename(f), "\\d{4}") |> parse(Int, _)
+
+dates = @pipe dateInfo |> _[_.year .== _year, :].date
+dims = (X(lon), Y(lat), Ti(dates))
+
+ds.axes
+```
+
+```{julia}
+p = "INPUT/temp.zarr"
+@time savedataset(ds, path=p, overwrite=true)
+rm(p, recursive=true, force=true)
+```
+
+## 0.2. 手动保存
+
+```{julia}
+# add the `overwrite` option to zarr
+## DirectoryStore
+function zarr_group(s::String; overwrite=false, mode="w", kw...)
+    if overwrite && isdir(s)
+        rm(s, recursive=true, force=true)
+    end
+    isdir(s) ? zopen(s, mode) : zgroup(s; kw...)
+end
+
+
+```
+
+```{julia}
+using Zarr: BloscCompressor, NoCompressor
+
+p = "INPUT/zarr-06.zarr"
+g = zarr_group(p) #  * "/" * varname
+# rm(p, recursive=true, force=true)
+
+varname = "LAI"
+
+_chunks = (240*5, 240*5, 50)
+compressor = BloscCompressor(cname="zstd",shuffle=0)
+compressor = NoCompressor()
+
+t = UInt8
+dims = (28800, 7200, 46)
+# I want to overwrite this variable
+
+# compressor
+## 写入的速度过慢
+z = zcreate(t, g, varname, dims...;chunks=_chunks, compressor)
+```
+
+```{julia}
+@time z[:] .= LAI[:, :, :];
+# 94.836406 seconds (69.21 k allocations: 39.536 GiB, 2.52% gc time)
+```
+
+## 0.3. Zarr的并行版本
+
+```{julia}
+using Zarr: ConcurrentRead
+
+Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
+
+Zarr.concurrent_io_tasks[] = 20;
+```
+
+# 1. 测试nc文件的速度
+
+
+```{julia}
+using NCDatasets
+using NCDatasets: Dataset
+
+using DataStructures
+# This creates a new NetCDF file /tmp/test.nc.
+# The mode "c" stands for creating a new file (clobber)
+p = "INPUT/test-02.nc"
+isfile(p) && rm(p)
+
+ds = Dataset(p, "c")
+
+# Define the dimension "lon" and "lat" with the size 100 and 110 resp.
+
+defDim(ds,"lon",dims[1])
+defDim(ds,"lat",dims[2])
+defDim(ds,"time",dims[3])
+
+# Define the variables temperature with the attribute units
+v = defVar(ds,"LAI", UInt8, ("lon","lat", "time"), 
+  # chunksizes=[1200, 1200, 50], 
+  deflatelevel=1)
+# 13.985092 seconds (94.15 k allocations: 6.379 MiB, 0.74% compilation time)
+# 69.149436 seconds (4 allocations: 208 bytes)
+
+# write a single column
+# v[:,1] = data[:,1]
+@time v[:, :, :] = LAI
+# write a the complete data set
+# v[:,:] = data
+close(ds)
+```
+
+## 这说明，如果采用netcdf作为backend可能更快
+

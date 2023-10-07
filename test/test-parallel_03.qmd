@@ -1,0 +1,83 @@
+```{julia}
+using ParallelUtilities
+using SharedArrays
+using Distributed
+using Statistics
+```
+
+```{julia}
+addprocs(4)
+```
+
+```{julia}
+@everywhere begin
+  using ParallelUtilities
+  using SharedArrays
+  using Distributed
+  using Statistics
+end
+```
+
+
+```{julia}
+dims = (1000, 1500, 365)
+A = rand(Float32, dims...);
+# @time A_share = SharedArray{Float32}(dims...);
+# @time A_share .= A;
+@time B = SharedArray(A);
+```
+
+## 并行格式
+
+```{julia}
+using Statistics
+
+# 这是否已经使用了dist?
+@time r1 = mapslices(mean, A, dims=3);
+@time r2 = mapslices(mean, B, dims=3);
+
+r1 == r2
+```
+
+```{julia}
+# 这里如何修改为并行格式
+# pids = ParallelUtilities.workers_myhost()
+function mean_serial(A::AbstractArray{Float32, 3}) 
+  nrow, ncol = size(A)[1:2]
+  res = zeros(Float32, nrow, ncol)
+
+  @inbounds for i = 1:nrow, j = 1:ncol
+    # x = @view(A[i, j, :])
+    x = A[i, j, :]
+    res[i, j] = mean(x)
+  end
+  res
+end
+
+@time mean_serial(A);
+```
+
+```{julia}
+```
+
+
+```{julia}
+function mean_par(A::SharedArray{Float32, 3})
+  nrow, ncol = size(A)[1:2]
+  res = zeros(Float32, nrow, ncol)
+  
+  @distributed for i = 1:nrow
+    for j = 1:ncol
+      x = A[i, j, :]
+      res[i, j] = mean(x)
+    end
+  end
+  wait()
+  res
+end
+
+@time r2 = mean_par(B);
+```
+
+```{julia}
+```
