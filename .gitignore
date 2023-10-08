@@ -8,3 +8,5 @@ Manifest.toml
 .vdoc.jl
 temp
 .vscode
+
+*debug*

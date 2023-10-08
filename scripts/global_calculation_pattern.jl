@@ -34,7 +34,6 @@ dates = _dateInfo.date
 
 
 
-
 chunk = "2_4"
 d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.chunk.==chunk), :]
 
