@@ -35,9 +35,15 @@ end
 k = 5;
 grid = "2_4"
 
-year_min, year_max = info_group[k, [:year_min, :year_max]]
-d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
-process_LAI(d)
+for k = reverse(1:5)
+  year_min, year_max = info_group[k, [:year_min, :year_max]]
+
+  for grid in reverse(all_grids)
+    d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
+    process_LAI(d)
+  end
+end
+
 
 # _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
 # dates = _dateInfo.date

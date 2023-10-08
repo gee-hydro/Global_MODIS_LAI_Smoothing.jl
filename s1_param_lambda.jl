@@ -1,4 +1,4 @@
-#! julia -t 12 s1_param_lambda.jl
+#! julia -t 16 s1_param_lambda.jl
 println(Threads.nthreads())
 
 using Revise
@@ -19,7 +19,7 @@ function process_whit_chunk(d; outdir="OUTPUT", overwrite=false, method="cv")
   n = m.ntime
   w = zeros(Float32, n)
   interm = interm_whit{Float32}(; n)
-  res = mapslices_3d(pixel_cal_lambda, m; n_run=nothing, method, w, interm)
+  res = mapslices_3d(pixel_cal_lambda, m; n_run=nothing, method, w, interm, option=2)
 
   b = nc_st_bbox(m.fs[1])
   x, y = Terra.guess_dims(res, b)[1:2]

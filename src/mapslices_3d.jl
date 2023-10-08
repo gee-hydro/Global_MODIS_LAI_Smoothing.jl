@@ -1,6 +1,6 @@
 Bslice(i, j) = ()
-Bslice(B::AbstractArray{T,3}, i, j) where {T} = @view(B[i, j, :])
-Bslice(B::Tuple, i, j) = map(b -> @views(b[i, j, :]), B)
+@inbounds Bslice(B::AbstractArray{T,3}, i, j) where {T} = @view(B[i, j, :])
+@inbounds Bslice(B::Tuple, i, j) = map(b -> @views(b[i, j, :]), B)
 
 test_Bslice(B...;) = Bslice(B, 1, 1)
 # x = rand(2, 2, 2)
@@ -19,7 +19,7 @@ function mapslices_3d_chunk(f, A::AbstractArray, B...;
   r = f(A[1, 1, :], Bslice(B, 1, 1)...; kw...)
   res = zeros(eltype(r), nlon, nlat, length(r))
 
-  function subfun(I; kw...)
+  @views @inbounds function subfun(I; kw...)
     next!(progress)
     i, j = I
     x = @view(A[i, j, :])
@@ -43,7 +43,7 @@ function mapslices_3d_chunk(f, A::AbstractArray, B...;
     @par parallel for t = 1:nworker
       kw = kws[t]
       for I in i_chunks[t]
-        subfun(I; kw)
+        subfun(I; kw...)
       end
     end
   elseif option == 2
@@ -70,7 +70,6 @@ function mapslices_3d!(res, f, m::MFDataset, InVars=m.bands; n_run=nothing, para
 
   ## 算完然后再切另一块数据
   for k in 1:n_run
-    # 把kw...每个拷贝一份?
     _chunk = m.chunks[k]
     ii, jj, _ = _chunk
     printstyled("[chunk=$k] reading data ...\n", color = :blue, bold=true)

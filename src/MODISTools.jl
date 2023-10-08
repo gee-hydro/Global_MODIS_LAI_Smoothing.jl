@@ -5,19 +5,9 @@ includet("mapslices_3d.jl")
 includet("main_whit.jl")
 includet("zarr.jl")
 
-
-
-using Terra
 using DataFrames
 using RTableTools
 
-function nc_st_bbox(file)
-  nc_open(file) do nc
-    lat = nc[r"lat"][:]
-    lon = nc[r"lon"][:]
-    st_bbox(lon, lat)
-  end
-end
 
 function getFileInfo()
   dir_root = "z:/MODIS/Terra_LAI_v061_nc/"

@@ -1,6 +1,7 @@
 using YAXArrays
 using Zarr
 import Zarr: ConcurrentRead, NoCompressor, BloscCompressor, ZlibCompressor
+using Terra
 
 Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
 ## 采用Zarr保存数据，免去了数据拼接的烦恼
@@ -19,3 +20,10 @@ function zarr_group(s::String; overwrite=false, mode="w", kw...)
 end
 
 
+function nc_st_bbox(file)
+  nc_open(file) do nc
+    lat = nc[r"lat"][:]
+    lon = nc[r"lon"][:]
+    st_bbox(lon, lat)
+  end
+end
