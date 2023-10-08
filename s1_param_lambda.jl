@@ -8,7 +8,7 @@ includet("src/MODISTools.jl")
 function process_whit_chunk(d; outdir="OUTPUT", overwrite=false, method="cv")
   year_min = minimum(d.year)
   year_max = maximum(d.year)
-  fout = "$outdir/$year_min-$(year_max)_grid,$(d.grid[1]).tif"
+  fout = "$outdir/lambda_$(method)_$year_min-$(year_max)_grid,$(d.grid[1]).tif"
 
   (isfile(fout) && !overwrite) && return
   @show fout
@@ -29,11 +29,11 @@ function process_whit_chunk(d; outdir="OUTPUT", overwrite=false, method="cv")
 end
 
 
-for k = reverse(1:5)
 # k = 5
+for k = reverse(1:5)
   year_min, year_max = info_group[k, [:year_min, :year_max]]
-  _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
-  dates = _dateInfo.date
+  # _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
+  # dates = _dateInfo.date
 
   for grid in reverse(all_grids)
     d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]

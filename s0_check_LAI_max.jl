@@ -5,6 +5,11 @@ using Revise
 includet("src/MODISTools.jl")
 
 
+function nanmaximum(x::AbstractVector{T}) where {T}
+  x[x.==T(255)] .= T(0)
+  maximum(x)
+end
+
 function process_LAI(d; outdir="OUTPUT", overwrite=false, prefix="LAI_max_")
   year_min = minimum(d.year)
   year_max = maximum(d.year)
@@ -17,7 +22,7 @@ function process_LAI(d; outdir="OUTPUT", overwrite=false, prefix="LAI_max_")
   m = MFDataset(d.file[1:1], chunkszie)
 
   InVars = m.bands[1:1]
-  res = mapslices_3d(Base.maximum, m, InVars; n_run=nothing)
+  res = mapslices_3d(nanmaximum, m, InVars; n_run=nothing)
 
   b = nc_st_bbox(m.fs[1])
   x, y = Terra.guess_dims(res, b)[1:2]
@@ -31,14 +36,13 @@ k = 5;
 grid = "2_4"
 
 year_min, year_max = info_group[k, [:year_min, :year_max]]
-_dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
-dates = _dateInfo.date
+d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
+process_LAI(d)
+
+# _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
+# dates = _dateInfo.date
 
 # for grid in reverse(all_grids)
 # d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
-d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
-process_LAI(d)
 # end
 # end
-
-## 存在bug，需要调试
