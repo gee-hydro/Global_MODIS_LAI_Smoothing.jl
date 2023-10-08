@@ -1,55 +1,17 @@
 ```{julia}
-using Ipaper
-using NetCDFTools
-using Distributed
-using DataFrames
-using RTableTools
-using ProgressMeter
+includet("src/MODISTools.jl")
 
-include("../main_nc.jl")
-include("../main_stars.jl")
-
-dir_root = path_mnt("z:/MODIS/Terra_LAI_v061_nc/")
-files = dir(dir_root, ".nc\$")
-
-dateInfo = fread("data/MODIS_LAI_dateInfo.csv")
-
-years  = @pipe basename.(files) |> str_extract("\\d{4}") |> parse.(Int, _)
-
-chunks = @pipe basename.(files) |> str_extract(r"(?<=_)\d_\d")
-
-info = DataFrame(; year=years, chunk=chunks, file = files)
-
-# 计算lambda的分组
-info_group = DataFrame(;
-  year_min = [2000, 2005, 2010, 2015, 2018],
-  year_max = [2004, 2009, 2014, 2019, 2022]
-)
-
-chunks = unique(chunks)
-
-k = 5
-year_min, year_max = info_group[k, [:year_min, :year_max]]
-_dateInfo = @pipe dateInfo |> _[(year_min .<= _.year .<= year_max), :]
-dates = _dateInfo.date
+indir = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc")
+fs = [
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2018_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2019_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2020_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2021_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2022_2_4.nc"
+]
+f = fs[1]
 ```
 
-- `2000-2004`
-- `2005-2009`
-- `2010-2014`
-- `2015-2019`
-- `2018-2022`: 只保留2020-2022的部分
-
-## 0.1. 尝试将数据修改为Zarr
-
-
-```{julia}
-using Zarr, YAXArrays
-using NetCDF
-## 文件大概有10G
-d = @pipe info |> _[(year_min .<= _.year .<= year_max) .&& (_.chunk .=="2_3"), :]
-f = d.file[1]
-```
 
 ```{julia}
 nc = nc_open(f)
@@ -83,25 +45,11 @@ rm(p, recursive=true, force=true)
 ## 0.2. 手动保存
 
 ```{julia}
-# add the `overwrite` option to zarr
-## DirectoryStore
-function zarr_group(s::String; overwrite=false, mode="w", kw...)
-    if overwrite && isdir(s)
-        rm(s, recursive=true, force=true)
-    end
-    isdir(s) ? zopen(s, mode) : zgroup(s; kw...)
-end
-
-
-```
-
-```{julia}
 using Zarr: BloscCompressor, NoCompressor
 
 p = "INPUT/zarr-06.zarr"
 g = zarr_group(p) #  * "/" * varname
 # rm(p, recursive=true, force=true)
-
 varname = "LAI"
 
 _chunks = (240*5, 240*5, 50)
@@ -123,14 +71,6 @@ z = zcreate(t, g, varname, dims...;chunks=_chunks, compressor)
 ```
 
 ## 0.3. Zarr的并行版本
-
-```{julia}
-using Zarr: ConcurrentRead
-
-Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
-
-Zarr.concurrent_io_tasks[] = 20;
-```
 
 # 1. 测试nc文件的速度
 

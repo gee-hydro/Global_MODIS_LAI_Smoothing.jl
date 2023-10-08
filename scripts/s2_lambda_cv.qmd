@@ -1,13 +1,9 @@
 ```{julia}
-using Ipaper
-using NetCDFTools
-using Distributed
 using DataFrames
 using RTableTools
-using ProgressMeter
 
-include("main_nc.jl")
-include("main_stars.jl")
+# include("main_nc.jl")
+# include("main_stars.jl")
 
 dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
 files = dir(dir_root, ".nc\$")
@@ -25,7 +21,7 @@ info_group = DataFrame(;
   year_max = [2004, 2009, 2014, 2019, 2022]
 )
 
-chunks = unique(chunks)
+all_chunks = unique(chunks)
 
 k = 5
 year_min, year_max = info_group[k, [:year_min, :year_max]]
@@ -43,28 +39,8 @@ dates = _dateInfo.date
 
 # 2. 计算 lambda
 
-## 2.1. 设计计算框架
-
-```{julia}
-# addprocs(8)
-
-@everywhere begin
-  using NetCDFTools
-  using Ipaper
-  using Whittaker2
-  using ProgressMeter
-  # using Ipaper
-end
-
-```
-
-> 已完成
-
 ```{julia, eval=FALSE}
 d = @pipe info |> _[(year_min .<= _.year .<= year_max) .&& (_.chunk .=="2_3"), :]
-include("main_nc.jl")
-include("main_stars.jl")
-include("main_whit.jl")
 
 cal_chunk_lambda(d; fact=4)
 # using Plots
@@ -78,7 +54,6 @@ cal_chunk_lambda(d; fact=4)
 using Stars
 # st_write(r_LAI, "r_LAI.tif")
 # st_write(r_QC, "r_QC.tif")
-
 @time begin
   r_LAI = st_read("scripts/Project_Global_LAI_smoothing/r_LAI.tif")
   r_QC = st_read("scripts/Project_Global_LAI_smoothing/r_QC.tif")
@@ -89,7 +64,6 @@ end
 
 ```{julia}
 # include("main_whit.jl")
-
 
 # st_write(r, "a.tif")
 # r2 = abind(r...)

@@ -1,14 +1,10 @@
-using Ipaper
-using NetCDFTools
-using Distributed
 using DataFrames
 using RTableTools
-using ProgressMeter
 
+# includet("../src/MODISTools.jl")
 # using Pkg; Pkg.activate(".")
-
-include("main_nc.jl")
-include("main_stars.jl")
+# include("main_nc.jl")
+# include("main_terra.jl")
 
 dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
 files = dir(dir_root, ".nc\$")
@@ -34,26 +30,9 @@ _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
 dates = _dateInfo.date
 
 
-include("main_whit.jl")
-
+# include("main_whit.jl")
 chunk = "2_4"
 d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.chunk.==chunk), :]
-
-
-
-
-using NCDatasets
-nc = NCDataset(d.file)
-nc = nc_open(d.file)
-
-
-
-
-
-
-
-
-
 
 
 

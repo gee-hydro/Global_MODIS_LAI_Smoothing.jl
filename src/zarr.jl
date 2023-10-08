@@ -1,6 +1,6 @@
 using YAXArrays
 using Zarr
-import Zarr: NoCompressor, BloscCompressor, ZlibCompressor
+import Zarr: ConcurrentRead, NoCompressor, BloscCompressor, ZlibCompressor
 
 Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
 ## 采用Zarr保存数据，免去了数据拼接的烦恼
