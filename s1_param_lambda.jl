@@ -1,51 +1,41 @@
 #! julia -t 12 s1_param_lambda.jl
+println(Threads.nthreads())
+
 using Revise
 includet("src/MODISTools.jl")
 
-indir = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc")
-fs = [
-  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2018_2_4.nc"
-  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2019_2_4.nc"
-  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2020_2_4.nc"
-  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2021_2_4.nc"
-  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2022_2_4.nc"
-]
-## debug
-# m = MFDataset(fs, chunkszie)
-# n = m.ntime
-# w = zeros(Float32, n)
-# interm = interm_whit{Float32}(; n)
-# res = mapslices_3d(pixel_cal_lambda, m; n_run=1, method="cv", w, interm)
 
-## 实战
-using DataFrames
-using RTableTools
+function process_whit_chunk(d; outdir="OUTPUT", overwrite=false, method="cv")
+  year_min = minimum(d.year)
+  year_max = maximum(d.year)
+  fout = "$outdir/$year_min-$(year_max)_grid,$(d.grid[1]).tif"
 
-dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
-files = dir(dir_root, ".nc\$")
+  (isfile(fout) && !overwrite) && return
+  @show fout
 
-dateInfo = fread("data/MODIS_LAI_dateInfo.csv")
+  chunkszie = (240 * 30, 240 * 30, typemax(Int))
+  m = MFDataset(d.file, chunkszie)
 
-years = @pipe basename.(files) |> str_extract("\\d{4}") |> parse.(Int, _)
-grids = @pipe basename.(files) |> str_extract(r"(?<=_)\d_\d")
+  n = m.ntime
+  w = zeros(Float32, n)
+  interm = interm_whit{Float32}(; n)
+  res = mapslices_3d(pixel_cal_lambda, m; n_run=nothing, method, w, interm)
 
-info = DataFrame(; year=years, grid=grids, file=files)
+  b = nc_st_bbox(m.fs[1])
+  x, y = Terra.guess_dims(res, b)[1:2]
+  dim_band = Rasters.Band(["lambda", "ymin", "ymax", "wc"])
+  r = rast(res, (x, y, dim_band))
+  @time st_write(r, fout)
+end
 
-# 计算lambda的分组
-info_group = DataFrame(;
-  year_min=[2000, 2005, 2010, 2015, 2018],
-  year_max=[2004, 2009, 2014, 2019, 2022]
-)
 
-all_grids = unique(grids)
-
-for k = 1:5
+for k = reverse(1:5)
 # k = 5
   year_min, year_max = info_group[k, [:year_min, :year_max]]
   _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
   dates = _dateInfo.date
 
-  for grid in all_grids
+  for grid in reverse(all_grids)
     d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
     process_whit_chunk(d)
   end

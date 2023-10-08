@@ -36,9 +36,6 @@ d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.chunk.==chunk), :]
 
 
 
-
-
-
 for chunk in all_chunks
   d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.chunk.==chunk), :]  
   

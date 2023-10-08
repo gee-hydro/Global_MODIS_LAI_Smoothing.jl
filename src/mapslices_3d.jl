@@ -10,8 +10,8 @@ test_Bslice(B...;) = Bslice(B, 1, 1)
 
 # 仅针对3维数据设计的一个并行算法
 # TODO: 这个算法移植到YAXArrays，能否变快
-function mapslices_3d(f, A::AbstractArray, B...; 
-  parallel=true, option = 1, 
+function mapslices_3d_chunk(f, A::AbstractArray, B...; 
+  parallel=true, option = 2, 
   progress=nothing, kw...)
 
   nlon, nlat = size(A)[1:2]
@@ -31,14 +31,14 @@ function mapslices_3d(f, A::AbstractArray, B...;
   ## https://docs.julialang.org/en/v1/manual/multi-threading/#Using-@threads-without-data-races
   # 为避免数据争夺，想办法对kw进行拷贝，提前划分好chunks
   # 为了节省内存，把程序改的很复杂，实属无奈
+  progress === nothing && (progress = Progress(nlon * nlat))
   nworker = Threads.nthreads()
-  progress === nothing && (progress = Progress(nlon*nlat))
+  inds = collect(Iterators.product(1:nlon, 1:nlat))[:]
+  kws = repeat([kw], nworker)
 
   if option == 1
     ## 并行: 方案1
-    inds = collect(Iterators.product(1:nlon, 1:nlat))[:]
     i_chunks = r_chunk(inds, nworker)
-    kws = repeat([kw], nworker)
     # nt = min(nworker, length(i_chunks))
     @par parallel for t = 1:nworker
       kw = kws[t]
@@ -51,7 +51,7 @@ function mapslices_3d(f, A::AbstractArray, B...;
     @par parallel for I in inds
       t = Threads.threadid()
       kw = kws[t]
-      subfun(I; kw)
+      subfun(I; kw...)
     end
   end
   res
@@ -61,11 +61,11 @@ end
 """
 - `n_run`: run how many chunks, default all
 """
-function mapslices_3d!(res, f, m::MFDataset, InVars=m.bands; n_run=nothing, parallel=true, progress=nothing, kw...)
+function mapslices_3d!(res, f, m::MFDataset, InVars=m.bands; n_run=nothing, parallel=true, kw...)
   nlon, nlat = m.sizes[1][1:2]
   progress = Progress(nlon*nlat)
 
-  n = length(m.chunks)
+  # n = length(m.chunks)
   n_run === nothing && (n_run = length(m.chunks))
 
   ## 算完然后再切另一块数据
@@ -77,19 +77,19 @@ function mapslices_3d!(res, f, m::MFDataset, InVars=m.bands; n_run=nothing, para
     @time l_data = map(band -> m[band][ii, jj], InVars) # this is a list of data
 
     println("[chunk=$k] calculating ...")
-    @time res[ii, jj, :] .= mapslices_3d(f, l_data...; kw..., progress)
+    @time res[ii, jj, :] .= mapslices_3d_chunk(f, l_data...; kw..., parallel, progress)
   end
   res
 end
 
 
-function mapslices_3d(f, m::MFDataset, InVars=m.bands; kw...)
+function mapslices_3d(f, m::MFDataset, InVars=m.bands; n_run=nothing, kw...)
   _data = map(band -> m[band][1:1, 1:1], InVars) # this is a list of data
-  r = mapslices_3d(f, _data...; kw...)
+  r = mapslices_3d_chunk(f, _data...; kw...)
 
   nlon, nlat = m.sizes[1][1:2]
   res = zeros(eltype(r), nlon, nlat, length(r))
   obj_size(res)
   
-  mapslices_3d!(res, f, m, InVars; kw...)
+  mapslices_3d!(res, f, m, InVars; n_run, kw...)
 end
