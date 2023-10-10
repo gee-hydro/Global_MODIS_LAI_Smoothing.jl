@@ -28,14 +28,13 @@ function process_whit_chunk(d; outdir="OUTPUT", overwrite=false, method="cv")
   @time st_write(r, fout)
 end
 
+# _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
+# dates = _dateInfo.date
 
 # k = 5
 for k = reverse(1:5)
   year_min, year_max = info_group[k, [:year_min, :year_max]]
-  # _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
-  # dates = _dateInfo.date
-
-  for grid in reverse(all_grids)
+  for grid in all_grids
     d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
     process_whit_chunk(d)
   end

@@ -8,6 +8,7 @@ using ProgressMeter
 using Ipaper
 
 ## 加一个Base.show function
+# MFDataset(;fs, nc, bands, ...)
 @with_kw mutable struct MFDataset
   fs::Vector{String}
   nc::Vector{NCDataset{Nothing}} = nc_open.(fs)
@@ -23,12 +24,15 @@ end
 MFDataset(fs) = MFDataset(; fs)
 MFDataset(fs, chunksize) = MFDataset(; fs, chunksize)
 
+nc_close(m::MFDataset) = nc_close.(m.nc)
+
+
 mutable struct MFVariable{T,N}
   vars::Vector{CFVariable{T,N}}
 end
 
-nc_close(m::MFDataset) = nc_close.(m.nc)
 
+# v = m["LAI"]
 function Base.getindex(m::MFDataset, key::Union{String,Symbol})
   # return a MFVariable
   vars = map(nc -> nc[key], m.nc)
@@ -38,6 +42,7 @@ end
 
 Base.getindex(v::MFVariable, i) = v.vars[i]
 
+# data = v[i, j]
 function Base.getindex(v::MFVariable{T,3}, i, j; dims=3) where {T}
   ntime = map(x -> size(x, 3), v.vars) |> sum
   nlon, nlat = size(v.vars[1])[1:2]
@@ -45,11 +50,11 @@ function Base.getindex(v::MFVariable{T,3}, i, j; dims=3) where {T}
   j != Colon() && (nlat = length(j))
 
   res = zeros(T, nlon, nlat, ntime)
+
   i_beg = 0
   @inbounds for var in v.vars
     _ntime = size(var, 3)
     inds = (i_beg + 1):(i_beg+_ntime)
-    # @show inds
     res[:, :, inds] .= var[i, j, :]
     i_beg += _ntime
   end
