@@ -8,8 +8,11 @@ fs = [
   "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2021_2_4.nc"
   "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2022_2_4.nc"
 ]
+
 ## debug
-# m = MFDataset(fs, chunkszie)
+chunk_size = (240 * 10, 240 * 10, 10000)
+m = MFDataset(fs, chunk_size)
+
 # n = m.ntime
 # w = zeros(Float32, n)
 # interm = interm_whit{Float32}(; n)

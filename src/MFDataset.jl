@@ -6,14 +6,24 @@ using NetCDF
 using Parameters
 using ProgressMeter
 using Ipaper
+using Terra
 
-## 加一个Base.show function
+function nc_st_bbox(file)
+  nc_open(file) do nc
+    lat = nc[r"lat"][:]
+    lon = nc[r"lon"][:]
+    st_bbox(lon, lat)
+  end
+end
+
+# TODO: 加一个Base.show function
 # MFDataset(;fs, nc, bands, ...)
 @with_kw mutable struct MFDataset
   fs::Vector{String}
   nc::Vector{NCDataset{Nothing}} = nc_open.(fs)
   bands = nc_bands(nc[1])
 
+  bbox::Terra.bbox = nc_st_bbox(fs[1])
   sizes = map(nc -> size(nc[bands[1]]), nc) # variable dimension size
   ntime = sum(map(last, sizes)) # 时间在最后一维
 

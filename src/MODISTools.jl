@@ -1,9 +1,10 @@
 # module MODISTools
 
 includet("MFDataset.jl")
-includet("mapslices_3d.jl")
-includet("main_whit.jl")
 includet("zarr.jl")
+includet("mapslices_3d.jl")
+includet("mapslices_3d_zarr.jl")
+includet("main_whit.jl")
 
 using DataFrames
 using RTableTools

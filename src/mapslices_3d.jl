@@ -10,7 +10,7 @@ test_Bslice(B...;) = Bslice(B, 1, 1)
 
 # 仅针对3维数据设计的一个并行算法
 # TODO: 这个算法移植到YAXArrays，能否变快
-function mapslices_3d_chunk(f, A::AbstractArray, B...;
+function mapslices_3d_chunk(f::Function, A::AbstractArray, B...;
   parallel=true, option=2,
   progress=nothing, kw...)
 
@@ -18,7 +18,7 @@ function mapslices_3d_chunk(f, A::AbstractArray, B...;
 
   r = f(A[1, 1, :], Bslice(B, 1, 1)...; kw...)
   res = zeros(eltype(r), nlon, nlat, length(r))
-
+  # inds = collect(Iterators.product(1:nlon, 1:nlat))[:]
   function subfun(I; kw...)
     next!(progress)
     i, j = I
@@ -30,6 +30,7 @@ function mapslices_3d_chunk(f, A::AbstractArray, B...;
         res[i, j, :] .= f(x, y...; kw...)
       catch ex
         @show "[e] i=$i, j=$j" ex
+        throw(ex)
       end
     end
   end
@@ -71,7 +72,9 @@ end
 """
 - `n_run`: run how many chunks, default all
 """
-function mapslices_3d!(res, f, m::MFDataset, InVars=m.bands; n_run=nothing, parallel=true, kw...)
+function mapslices_3d!(res::Array, 
+  f::Function, m::MFDataset, InVars=m.bands; n_run=nothing, parallel=true, kw...)
+  
   nlon, nlat = m.sizes[1][1:2]
   progress = Progress(nlon * nlat)
 
@@ -92,8 +95,7 @@ function mapslices_3d!(res, f, m::MFDataset, InVars=m.bands; n_run=nothing, para
   res
 end
 
-
-function mapslices_3d(f, m::MFDataset, InVars=m.bands; n_run=nothing, kw...)
+function mapslices_3d(f::Function, m::MFDataset, InVars=m.bands; n_run=nothing, kw...)
   _data = map(band -> m[band][1:1, 1:1], InVars) # this is a list of data
   r = mapslices_3d_chunk(f, _data...; kw...)
 

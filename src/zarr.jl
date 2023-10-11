@@ -2,15 +2,17 @@ using YAXArrays
 using Zarr
 import Zarr: ConcurrentRead, NoCompressor, BloscCompressor, ZlibCompressor
 using DiskArrays: GridChunks
+using JSON
 
-
+# chunks = GridChunks(sizes[1], chunksize)
 Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
 ## 采用Zarr保存数据，免去了数据拼接的烦恼
 
-# Base.names(ds::Dataset) = string.(collect(keys(ds.cubes)))
-# Base.getindex(ds::Dataset, i) = ds[names(ds)[i]]
-# chunksize(ds::Dataset) = chunksize(ds[1])
+Base.names(ds::YAXArrays.Dataset) = string.(collect(keys(ds.cubes)))
+Base.getindex(ds::YAXArrays.Dataset, i) = ds[names(ds)[i]]
+chunksize(ds::YAXArrays.Dataset) = chunksize(ds[1])
 chunksize(cube) = Cubes.cubechunks(cube)
+GridChunks(z::ZArray) = GridChunks(size(z), chunksize(z))
 
 zarr_rm(p) = rm(p, recursive=true, force=true)
 
@@ -31,14 +33,16 @@ end
 
 # Return
 - `task`: 用于记录哪些chunks运行成功了，运行成功的部分则跳过
+- `bbox`: `[xmin, ymin, xmax, ymax]`，仅用bbox也可反推`z`的位置
 """
-function geo_zcreate(p, varname,
-  lon, lat, band; chunk_size, datatype=Float32)
+function geo_zcreate(p::String, varname::String,
+  lon::AbstractVector, lat::AbstractVector, band; chunk_size, datatype=Float32, create_dims=false)
 
   compressor = BloscCompressor(cname="zstd", shuffle=0)
   g = zarr_group(p)
   dims = (length(lon), length(lat), length(band))
 
+  chunk_size = (chunk_size[1:2]..., length(band)) # 最后一维是全部
   chunks = GridChunks(dims, chunk_size)
   tasks = falses(length(chunks))
 
@@ -49,36 +53,46 @@ function geo_zcreate(p, varname,
   attr_x = Dict("_ARRAY_DIMENSIONS" => ["lon"], "_ARRAY_OFFSET" => 0)
   attr_y = Dict("_ARRAY_DIMENSIONS" => ["lat"], "_ARRAY_OFFSET" => 0)
   attr_t = Dict("_ARRAY_DIMENSIONS" => [name_t], "_ARRAY_OFFSET" => 0)
-  attr_z = Dict("_ARRAY_DIMENSIONS" => [name_t, "lat", "lon"], "task" => tasks)
+  attr_z = Dict("_ARRAY_DIMENSIONS" => [name_t, "lat", "lon"],
+    "bbox" => bbox2vec(st_bbox(lon, lat)), "task" => tasks)
 
-  x = zcreate(datatype, g, "lon", length(lon); attrs=attr_x)
-  y = zcreate(datatype, g, "lat", length(lat); attrs=attr_y)
-  t = zcreate(eltype(band), g, name_t, length(band); attrs=attr_t)
+  if create_dims
+    if !isdir("$p/lon")
+      x = zcreate(datatype, g, "lon", length(lon); attrs=attr_x)
+      x[:] .= lon
+    end
+
+    if !isdir("$p/lat")
+      y = zcreate(datatype, g, "lat", length(lat); attrs=attr_y)
+      y[:] .= lat
+    end
+  end
+
+  if !isdir("$p/$name_t")
+    t = zcreate(eltype(band), g, name_t, length(band); attrs=attr_t)
+    t[:] .= band.val
+  end
 
   z = zcreate(datatype, g, varname, dims...; chunks=chunk_size, compressor, attrs=attr_z)
-
-  x[:] .= lon
-  y[:] .= lat
-  t[:] .= band.val
   z
 end
 
 
-function task_finished!(z, ichunk)
+function geo_zcreate(p::String, varname::String,
+  b::Terra.bbox, cellsize, band; kw...)
+
+  lon, lat = bbox2dims(b; cellsize)
+  geo_zcreate(p, varname, lon, lat, band; kw...)
+end
+
+# true : 运行结束
+# false: 未结束
+chunk_task_finished(z::ZArray, ichunk) = z.attrs["task"][ichunk]
+
+function chunk_task_finished!(z::ZArray, ichunk)
   z.attrs["task"][ichunk] = true
   f = "$(z.storage.folder)/$(z.path)/.zattrs"
   open(f, "w") do fid
     JSON.print(fid, z.attrs)
-  end
-end
-
-## -----------------------------------------------------------------------------
-using Terra
-
-function nc_st_bbox(file)
-  nc_open(file) do nc
-    lat = nc[r"lat"][:]
-    lon = nc[r"lon"][:]
-    st_bbox(lon, lat)
   end
 end
