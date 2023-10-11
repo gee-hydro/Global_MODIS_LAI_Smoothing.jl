@@ -74,4 +74,10 @@ function Base.getindex(v::MFVariable{T,3}, i, j; dims=3) where {T}
 end
 
 
+function get_chunk(m::MFDataset, k; InVars=m.bands)
+  ii, jj, _ = m.chunks[k]
+  map(band -> m[band][ii, jj], InVars)
+end
+
+
 export MFDataset, MFVariable

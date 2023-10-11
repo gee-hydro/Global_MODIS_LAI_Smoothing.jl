@@ -89,8 +89,8 @@ end
 # false: 未结束
 chunk_task_finished(z::ZArray, ichunk) = z.attrs["task"][ichunk]
 
-function chunk_task_finished!(z::ZArray, ichunk)
-  z.attrs["task"][ichunk] = true
+function chunk_task_finished!(z::ZArray, ichunk, value=true)
+  z.attrs["task"][ichunk] = value
   f = "$(z.storage.folder)/$(z.path)/.zattrs"
   open(f, "w") do fid
     JSON.print(fid, z.attrs)

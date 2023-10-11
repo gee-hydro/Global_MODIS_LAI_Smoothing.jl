@@ -2,9 +2,10 @@
 
 includet("MFDataset.jl")
 includet("zarr.jl")
+includet("main_whit.jl")
+includet("mapslices_3d_chunk.jl")
 includet("mapslices_3d.jl")
 includet("mapslices_3d_zarr.jl")
-includet("main_whit.jl")
 
 using DataFrames
 using RTableTools
