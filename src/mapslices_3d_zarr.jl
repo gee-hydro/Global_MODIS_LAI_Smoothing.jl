@@ -17,6 +17,7 @@ function mapslices_3d!(z::ZArray,
     end
 
     printstyled("\t[chunk=$k] reading data ...\n", color=:blue, bold=true)
+    ii, jj, _ = m.chunks[k]
     @time l_data = get_chunk(m, k; InVars) # list of input data
 
     println("\t[chunk=$k] calculating ...")
