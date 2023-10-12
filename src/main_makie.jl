@@ -20,7 +20,7 @@ function my_theme!(; font_size=24)
   set_theme!(mytheme)
 end
 
-function big_heatmap!(ax, x, y, z; fact=10)
+function sbig_heatmap!(ax, x, y, z; fact=10)
   x2 = x[1:fact:end]
   y2 = y[1:fact:end]
   z2 = @lift $z[1:fact:end, 1:fact:end]
@@ -28,6 +28,16 @@ function big_heatmap!(ax, x, y, z; fact=10)
   handle = heatmap!(ax, x2, y2, z2)
   handle
 end
+
+function big_heatmap!(ax, x, y, z; fact=10)
+  x2 = x[1:fact:end]
+  y2 = y[1:fact:end]
+  z2 = z[1:fact:end, 1:fact:end]
+
+  handle = heatmap!(ax, x2, y2, z2)
+  handle
+end
+
 
 function map_on_mouse(fig, handle_plot, slon, slat)
   on(events(fig).mousebutton, priority=2) do event

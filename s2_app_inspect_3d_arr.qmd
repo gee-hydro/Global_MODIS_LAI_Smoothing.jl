@@ -1,18 +1,38 @@
+```{julia}
 includet("src/main_makie.jl")
+includet("src/zarr.jl")
+
+using YAXArrays
+using Zarr
 
 ## 1. 加载数据 ------------------------------------------------------------------
-f = "H:/VNP15A2H-LAI_240deg_nc/VNP15A2H-LAI_240deg_global_2022_2_3.nc"
-nc = nc_open(f)
-LAI = nc["LAI"]
 
-lon = nc["lon"][:]
-lat = nc["lat"][:]
-time = nc["time"][:]
+f = "Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr"
+ds = open_dataset(f)
 
+grids = names(ds) |> sort
+z = ds["grid.2_4"].data
+# z = ds[3].data
+
+b = Terra.bbox(z.attrs["bbox"]...)
+lon, lat = bbox2dims(b)
+lon = collect(lon)
+lat = collect(lat)
+
+time = 1:229
+@time lambda = z[:, :, 1];
+# f = "H:/VNP15A2H-LAI_240deg_nc/VNP15A2H-LAI_240deg_global_2022_2_3.nc"
+# nc = nc_open(f)
+# LAI = nc["LAI"]
+# lon = nc["lon"][:]
+# lat = nc["lat"][:]
+# time = nc["time"][:]
 cellx = lon[2] - lon[1]
 celly = abs(lat[2] - lat[1])
-
+```
 ## 2. 绘图 --------------------------------------------------------------------
+
+```{julia}
 my_theme!(font_size=24)
 style_line = (; linestyle=:dash, color=:red, linewidth=2)
 
@@ -20,6 +40,7 @@ fig = Figure(resolution=(1900, 800), outer_padding=2) # figure_padding = 10
 
 sg = SliderGrid(fig[1, 2], (label="time", range=time, startvalue=middle(time)))
 stime = sg.sliders[1].value
+
 slon = Observable(middle(lon))
 slat = Observable(middle(lat))
 
@@ -29,16 +50,15 @@ k = @lift findnear(time, $stime)[2]
 
 str_pos = @lift @sprintf("Position: i=%d, j=%d", $i, $j)
 label_pos = Label(fig[1, 1], str_pos, fontsize=30, tellwidth=false)
-
-z = @lift LAI[$i, $j, :]
-mat_z = @lift LAI[:, :, $k]
+# z = @lift LAI[$i, $j, :]
+# mat_z = @lift LAI[:, :, $k]
 
 ## 时间序列图
-ax_time = Axis(fig[2, 1], title=@lift(@sprintf("时间序列图: time = %d", $stime)),
-  xlabel="DOY")
+# ax_time = Axis(fig[2, 1], title=@lift(@sprintf("时间序列图: time = %d", $stime)),
+#   xlabel="DOY")
 # plot!(ax5, time, zs, label="China")
-lines!(ax_time, time, z, label="Pixel", color=:blue)
-vlines!(ax_time, k; style_line...) # , zs[$k]
+# lines!(ax_time, time, z, label="Pixel", color=:blue)
+# vlines!(ax_time, k; style_line...) # , zs[$k]
 
 ## 空间图
 plot_main = fig[2, 2]
@@ -46,8 +66,8 @@ ax_xy = Axis(plot_main, title=@lift(@sprintf("XY剖面图: time = %d", $stime)),
   # yticks=15:10:55,
   xlabel="Latitude", ylabel="Longitude")
 
-handle = big_heatmap!(ax_xy, lon, lat, mat_z)
-Colorbar(fig[:, 0], handle_hm, height=Relative(0.5))
+handle = big_heatmap!(ax_xy, lon, lat, lambda)
+Colorbar(fig[:, 0], handle, height=Relative(0.5))
 vlines!(ax_xy, slon; style_line...)
 hlines!(ax_xy, slat; style_line...)
 
@@ -58,3 +78,4 @@ colgap!(fig.layout, 0)
 rowgap!(fig.layout, 0)
 
 fig
+```
