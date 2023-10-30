@@ -1,10 +1,13 @@
 using GLMakie
+using Colors
 using DimensionalData
 using JLD2
 using Statistics
 using Printf
 # using NaNStatistics
 includet("MFDataset.jl")
+
+nan_color = RGBA(1.0, 1.0, 1.0, 0.2)
 
 
 function findnear(values, x)
@@ -29,12 +32,12 @@ function sbig_heatmap!(ax, x, y, z; fact=10)
   handle
 end
 
-function big_heatmap!(ax, x, y, z; fact=10)
+function big_heatmap!(ax, x, y, z; fact=10, kw...)
   x2 = x[1:fact:end]
   y2 = y[1:fact:end]
   z2 = z[1:fact:end, 1:fact:end]
 
-  handle = heatmap!(ax, x2, y2, z2)
+  handle = heatmap!(ax, x2, y2, z2; kw...)
   handle
 end
 

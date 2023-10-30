@@ -12,7 +12,7 @@ using RTableTools
 
 
 function getFileInfo()
-  dir_root = "z:/MODIS/Terra_LAI_v061_nc/"
+  dir_root = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc/")
   files = dir(dir_root, ".nc\$")
 
   years = @pipe basename.(files) |> str_extract("\\d{4}") |> parse.(Int, _)

@@ -1,5 +1,5 @@
-using NCDatasets
-using NCDatasets: CFVariable
+import NCDatasets
+import NCDatasets: NCDataset, CFVariable
 using DiskArrays: GridChunks
 using NetCDFTools
 using NetCDF

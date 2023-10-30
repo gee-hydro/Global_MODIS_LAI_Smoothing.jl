@@ -1,5 +1,3 @@
-using JLD2
-
 """
 - `n_run`: run how many chunks, default all
 """
@@ -12,10 +10,8 @@ function mapslices_3d!(z::ZArray,
 
   ## 算完然后再切另一块数据
   for k in 1:n_run
-    if chunk_task_finished(z, k)
-      continue
-    end
-
+    chunk_task_finished(z, k) && continue
+    
     printstyled("\t[chunk=$k] reading data ...\n", color=:blue, bold=true)
     ii, jj, _ = m.chunks[k]
     @time l_data = get_chunk(m, k; InVars) # list of input data

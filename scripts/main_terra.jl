@@ -1,8 +1,8 @@
 # using Stars
 # using Stars: bbox
+import NCDatasets
 using Terra
 using NetCDFTools
-using NCDatasets
 using ProgressMeter
 
 # function vec_split(list, names)

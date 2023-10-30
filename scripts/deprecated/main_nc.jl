@@ -1,4 +1,4 @@
-using NCDatasets
+import NCDatasets
 using Ipaper: abind
 
 # function Stars.st_bbox(nc::NCDatasets.NCDataset)

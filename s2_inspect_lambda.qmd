@@ -1,0 +1,43 @@
+## 1. 加载数据 ------------------------------------------------------------------
+
+```{julia}
+includet("src/main_makie.jl")
+includet("src/zarr.jl")
+
+using Ipaper
+using YAXArrays
+using Zarr
+using ArchGDAL
+
+f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr" |> path_mnt
+ds = open_dataset(f)
+
+grids = names(ds) |> sort
+z = ds["grid.2_4"].data
+# z = ds[3].data
+b = Terra.bbox(z.attrs["bbox"]...)
+lon, lat = bbox2dims(b)
+lon = collect(lon)
+lat = collect(lat)
+
+cellx, celly = bbox2cellsize(b, size(z))
+time = 1:229
+@time lambda = z[:, :, 1];
+lambda[lambda.==0] .= NaN;
+```
+
+```{julia}
+vars = names(ds)
+zs = map(var -> ds[var].data, vars)
+fact = 10
+
+@time ra = resample(zs; fact);
+GC.gc()
+
+band = Rasters.Band(["lambda", "ymin", "ymax", "wc"])
+dims = ra.dims[1:2]..., band
+r = Raster(ra.data, dims; missingval=0f0); # 数据类型要一致
+
+write("lambda_24.tif", r2, force=true)
+plot(r[:, :, 1]; colorrange=[0.01, 50])
+```

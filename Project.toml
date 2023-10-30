@@ -2,7 +2,3 @@ name = "MODISTools"
 uuid = "e58298cb-69f7-4186-aecd-5834b6734269"
 authors = ["Dongdong Kong <kongdd@users.noreply.github.com>"]
 version = "0.1.0"
-
-[deps]
-Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
-SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"

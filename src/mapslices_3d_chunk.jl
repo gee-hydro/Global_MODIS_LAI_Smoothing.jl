@@ -1,12 +1,12 @@
-Bslice(i, j) = ()
-@inbounds Bslice(B::AbstractArray{T,3}, i, j) where {T} = @view(B[i, j, :])
-@inbounds Bslice(B::Tuple, i, j) = map(b -> @views(b[i, j, :]), B)
+TupleSlice(i, j) = ()
+@inbounds TupleSlice(B::AbstractArray{T,3}, i, j) where {T} = @view(B[i, j, :])
+@inbounds TupleSlice(B::Tuple, i, j) = map(b -> @views(b[i, j, :]), B)
 
-test_Bslice(B...;) = Bslice(B, 1, 1)
+# test_TupleSlice(B...;) = TupleSlice(B, 1, 1)
 # x = rand(2, 2, 2)
-# test_Bslice()
-# test_Bslice(x)
-# test_Bslice(x, x, x)
+# test_TupleSlice()
+# test_TupleSlice(x)
+# test_TupleSlice(x, x, x)
 
 # 仅针对3维数据设计的一个并行算法
 # TODO: 这个算法移植到YAXArrays，能否变快
@@ -16,7 +16,7 @@ function mapslices_3d_chunk(f::Function, A::AbstractArray, B...;
 
   nlon, nlat = size(A)[1:2]
 
-  r = f(A[1, 1, :], Bslice(B, 1, 1)...; kw...)
+  r = f(A[1, 1, :], TupleSlice(B, 1, 1)...; kw...)
   res = zeros(eltype(r), nlon, nlat, length(r))
   # inds = collect(Iterators.product(1:nlon, 1:nlat))[:]
   function subfun(I; kw...)
@@ -25,7 +25,7 @@ function mapslices_3d_chunk(f::Function, A::AbstractArray, B...;
 
     @views @inbounds begin
       x = A[i, j, :]
-      y = Bslice(B, i, j)
+      y = TupleSlice(B, i, j)
       try
         res[i, j, :] .= f(x, y...; kw...)
       catch ex
