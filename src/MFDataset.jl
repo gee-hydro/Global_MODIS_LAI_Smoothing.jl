@@ -58,13 +58,15 @@ function Base.getindex(v::MFVariable{T,3}, i, j; dims=3) where {T}
   nlon, nlat = size(v.vars[1])[1:2]
   i != Colon() && (nlon = length(i))
   j != Colon() && (nlat = length(j))
+  nlon == 1 && (i = [i])
+  nlat == 1 && (j = [j])
 
   res = zeros(T, nlon, nlat, ntime)
-
+  # obj_size(res)
   i_beg = 0
   @inbounds for var in v.vars
     _ntime = size(var, 3)
-    inds = (i_beg + 1):(i_beg+_ntime)
+    inds = (i_beg+1):(i_beg+_ntime)
     res[:, :, inds] .= var[i, j, :]
     i_beg += _ntime
   end

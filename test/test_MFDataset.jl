@@ -1,4 +1,7 @@
 # MFDataset
+using Revise
+cd("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
+includet("../src/MODISTools.jl")
 
 indir = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc")
 fs = [

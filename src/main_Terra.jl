@@ -1,4 +1,7 @@
 using Terra
+using Zarr
+using Shapefile
+st_dims(x::Shapefile.Point) = x.x, x.y
 
 bbox2lims(b::bbox) = ((b.xmin, b.xmax), (b.ymin, b.ymax))
 
@@ -21,9 +24,9 @@ function resample2(r::AbstractArray; fact=10, deepcopy=false)
   cols = repeat([:], ndims(r) - 2)
 
   if deepcopy
-    r[1:fact:end, 1:fact:end, cols...]  
+    r[1:fact:end, 1:fact:end, cols...]
   else
-    @views r[1:fact:end, 1:fact:end, cols...]  
+    @views r[1:fact:end, 1:fact:end, cols...]
   end
 end
 
@@ -70,14 +73,42 @@ function select_grid(ds, (lon, lat))
   !isempty(inds) ? names(ds)[inds[1]] : nothing
 end
 
-# lons, lats = bbox2dims(b; size=size(z))
-# slon, ilon = findnear(lons, lon)
-# slat, ilat = findnear(lats, lat)
-# val = nothing
-# data && (val = slice2(z, ilon, ilat))
-# (; z, b, grid, val, loc=(slon, slat))
-function get_grid(ds::YAXArrays.Dataset, grid)
-  z = ds[grid].data
-  # b = st_bbox(z)  
-  z
+
+## extract data
+function rm_empty(x)
+  inds = findall(!isnothing, x)
+  inds, x[inds]
+end
+
+function st_location((x, y)::Tuple{Real,Real};
+  b::bbox, cellx::Real, celly::Real, nx::Int, ny::Int)
+
+  i = (x - b.xmin) / cellx
+  if celly > 0
+    j = (y - b.ymin) / celly
+  else
+    j = (b.ymax - y) / abs(celly)
+  end
+  i = floor(Int, i)
+  j = floor(Int, j)
+
+  if (i < 1 || i > nx) || (j < 1 || j > ny)
+    nothing
+  else
+    i, j
+  end
+end
+
+function st_location(r::Raster, points::Vector{Tuple{T,T}}) where {T<:Real}
+  b = st_bbox(r)
+  nx, ny = size(r)[1:2]
+  cellx, celly = st_cellsize(r)
+  inds, locs = st_location.(points; b, cellx, celly, nx, ny) |> rm_empty
+  inds, locs
+end
+
+function st_extract(ra::Raster, points)
+  inds, locs = st_location(ra, points)
+  lst = [ra.data[i, j, :] for (i, j) in locs]
+  inds, cbind(lst...)
 end

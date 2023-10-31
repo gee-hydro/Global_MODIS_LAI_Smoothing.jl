@@ -1,0 +1,62 @@
+```{julia}
+# MFDataset
+cd("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
+using Revise
+
+includet("../src/MODISTools.jl")
+includet("../src/main_Terra.jl")
+
+indir = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc")
+fs = [
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2018_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2019_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2020_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2021_2_4.nc"
+  "$indir/MOD15A2H_v061-raw2-LAI_240deg_global_2022_2_4.nc"
+]
+```
+
+```{julia}
+using DataFrames
+st = Shapefile.Table("data/shp/st_1e3_mask_tidy.shp") |> DataFrame
+points = st_dims.(st.geometry)
+```
+
+```{julia}
+function extract_LAI(f::String, points)
+  printstyled("Reading data: $(basename(f)) \n")
+  @time ra = RasterStack(f)
+  inds, mat_LAI = st_extract(ra[:LAI], points);
+  _, mat_QC = st_extract(ra[:QcExtra], points);
+  (; st=st[inds, :], LAI=mat_LAI, QC = mat_QC)
+end
+
+function extract_LAI(fs::Vector{String}, points)
+  res = Vector{Any}(undef, length(fs))
+  Threads.@threads for i in eachindex(fs)
+    res[i] = extract_LAI(fs[i], points)
+  end
+  res
+end
+
+## NCDatasets多线程为何无法运行
+function Base.merge(xs::Vector{<:NamedTuple})
+  keys = Base.keys(xs[1])
+  values = [vcat(map(x -> x[name], xs)...) for name in keys]
+  (; zip(keys, values)...)
+end
+
+res = [extract_LAI(f, points) for f in fs]
+# @time ra_LAI = Raster(f; key=:LAI)
+# @time ra_QC = Raster(f; key=:QcExtra)
+```
+
+```{julia}
+using JLD2
+jldsave("sampledData.jld2"; r...)
+# st_sel, mat_LAI, mat_QC = merge(res);
+```
+
+```{julia}
+load("sampledData.jld2")
+```
