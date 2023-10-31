@@ -4,13 +4,13 @@ import Zarr: ConcurrentRead, NoCompressor, BloscCompressor, ZlibCompressor
 using DiskArrays: GridChunks
 using JSON
 using Terra
-using Rasters
+includet("main_Terra.jl")
 
 # chunks = GridChunks(sizes[1], chunksize)
 Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
 ## 采用Zarr保存数据，免去了数据拼接的烦恼
 
-Base.names(ds::YAXArrays.Dataset) = string.(collect(keys(ds.cubes)))
+Base.names(ds::YAXArrays.Dataset) = string.(collect(keys(ds.cubes))) |> sort
 Base.getindex(ds::YAXArrays.Dataset, i) = ds[names(ds)[i]]
 chunksize(ds::YAXArrays.Dataset) = chunksize(ds[1])
 chunksize(cube) = Cubes.cubechunks(cube)
@@ -97,22 +97,4 @@ function chunk_task_finished!(z::ZArray, ichunk, value=true)
   open(f, "w") do fid
     JSON.print(fid, z.attrs)
   end
-end
-
-Terra.st_bbox(z::ZArray) = Terra.bbox(z.attrs["bbox"]...)
-Terra.st_bbox(zs::Vector{<:ZArray}) = st_bbox(st_bbox.(zs))
-
-function Rasters.resample(zs::Vector{<:ZArray}; fact=10, missingval=0)
-  res = Vector{Raster}(undef, length(zs))
-  nd = ndims(zs[1])
-  cols = repeat([:], nd - 2) # all bands
-
-  @par for i = eachindex(zs)
-    println("running $i")
-    z = zs[i]
-    dat = z[1:fact:end, 1:fact:end, cols...]
-    b = st_bbox(z)
-    res[i] = Raster(dat, b)
-  end
-  st_mosaic(res; missingval)
 end

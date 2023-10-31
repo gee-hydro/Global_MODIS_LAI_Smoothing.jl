@@ -13,7 +13,7 @@ ds = open_dataset(f)
 
 grids = names(ds) |> sort
 z = ds["grid.2_4"].data
-# z = ds[3].data
+
 b = Terra.bbox(z.attrs["bbox"]...)
 lon, lat = bbox2dims(b)
 lon = collect(lon)
@@ -29,6 +29,15 @@ lambda[lambda.==0] .= NaN;
 ### 如何把`lambda`拼接起来
 
 ## 2. 绘图 --------------------------------------------------------------------
+
+**设计一个复杂的应用，检查`whittaker`的表现**
+
+1. 鹰眼图，显示全球与局地
+
+2. 局地只显示一个grid
+   
+3. LAI时间序列
+
 
 ```{julia}
 my_theme!(font_size=24)

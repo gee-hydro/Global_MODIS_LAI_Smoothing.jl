@@ -1,17 +1,17 @@
 github = "https://github.com/jl-pkgs"
 
 pkgs = [
-  "GLMakie", 
-  "Colors", 
+  "GLMakie", "Shapefile",
+  "Colors",
   "JLD2", "JSON",
   "DimensionalData",
   "Rasters",
-  "Zarr", 
+  "Zarr",
   "DiskArrays",
-  "NCDatasets", 
-  "NetCDF", 
-  "Parameters", 
-  "ProgressMeter", 
+  "NCDatasets",
+  "NetCDF",
+  "Parameters",
+  "ProgressMeter",
   "DataFrames",
   "https://github.com/eco-hydro/Whittaker2.jl",
   "$github/Terra"

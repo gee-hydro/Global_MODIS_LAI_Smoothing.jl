@@ -9,12 +9,7 @@ includet("MFDataset.jl")
 
 nan_color = RGBA(1.0, 1.0, 1.0, 0.2)
 
-
-function findnear(values, x)
-  _, i = findmin(abs.(values .- x))
-  values[i], i
-end
-
+## functions for makie 
 function my_theme!(; font_size=24)
   kw_axes = (xticklabelsize=font_size, yticklabelsize=font_size,
     xlabelsize=font_size, ylabelsize=font_size,
@@ -23,12 +18,23 @@ function my_theme!(; font_size=24)
   set_theme!(mytheme)
 end
 
-function sbig_heatmap!(ax, x, y, z; fact=10)
+function terra_heatmap!(ax, r::Raster; missingval=nothing, kw...)
+  missingval === nothing && (missingval = r.missingval)
+
+  x, y = st_dims(r)
+  z = r.data
+  T = eltype(r)
+
+  z[z .== T(missingval)] .= T(NaN)
+  heatmap!(ax, x, y, z; kw...)
+end
+
+function sbig_heatmap!(ax, x, y, z; fact=10, kw...)
   x2 = x[1:fact:end]
   y2 = y[1:fact:end]
   z2 = @lift $z[1:fact:end, 1:fact:end]
 
-  handle = heatmap!(ax, x2, y2, z2)
+  handle = heatmap!(ax, x2, y2, z2, kw...)
   handle
 end
 
@@ -41,15 +47,21 @@ function big_heatmap!(ax, x, y, z; fact=10, kw...)
   handle
 end
 
-
-function map_on_mouse(fig, handle_plot, slon, slat)
-  on(events(fig).mousebutton, priority=2) do event
+function map_on_mouse(ax, handle_plot, slon, slat; verbose=false)
+  on(events(fig).mousebutton, priority=2) do event    
     if event.button == Mouse.left && event.action == Mouse.press
-      plt, i = pick(fig)
-      if plt == handle_plot
-        pos = mouseposition(ax_xy)
+      # 只要在这个axis就行
+      # plt, i = pick(ax)
+      # @show plt
+      pos = mouseposition(ax)
+      xlim, ylim = ax.limits[]
+      if (xlim[1] <= pos[1] <= xlim[2]) && (ylim[1] <= pos[2] <= ylim[2])
+        # if plt == handle_plot
+        # pos = mouseposition(ax)
+        # @show slon[], slat[], pos[1], pos[2]
         slon[] = pos[1]
         slat[] = pos[2]
+        verbose && @show slon[], slat[]
       end
     end
     return Consume(false)
@@ -91,3 +103,28 @@ end
 # lon = 70+cellsize/2:cellsize:140
 # lat = 15+cellsize/2:cellsize:55
 # time = 1:366
+
+## plot for shapefile
+using Shapefile
+
+# https://discourse.julialang.org/t/best-way-of-handling-shapefiles-in-makie/71028/9
+function Makie.convert_arguments(::Type{<:Poly}, p::Shapefile.Polygon)
+  # this is inefficient because it creates an array for each point
+  polys = Shapefile.GeoInterface.coordinates(p)
+  ps = map(polys) do pol
+    Polygon(
+      Point2f0.(pol[1]), # interior
+      map(x -> Point2f.(x), pol[2:end]))
+  end
+  (ps,)
+end
+
+function plot_poly!(ax, shp;
+  color=nan_color, strokewidth=0.7, strokecolor=:black, kw...)
+
+  foreach(shp.geometry) do geo
+    poly!(ax, geo; color, strokewidth, strokecolor, kw...)
+  end
+end
+
+bbox2rect(b) = Rect(b.xmin, b.ymin, b.xmax - b.xmin, b.ymax - b.ymin)

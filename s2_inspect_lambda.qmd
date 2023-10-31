@@ -1,4 +1,4 @@
-## 1. 加载数据 ------------------------------------------------------------------
+## 1. 加载数据
 
 ```{julia}
 includet("src/main_makie.jl")
@@ -27,11 +27,8 @@ lambda[lambda.==0] .= NaN;
 ```
 
 ```{julia}
-vars = names(ds)
-zs = map(var -> ds[var].data, vars)
 fact = 10
-
-@time ra = resample(zs; fact);
+@time ra = st_resample(zs; fact);
 GC.gc()
 
 band = Rasters.Band(["lambda", "ymin", "ymax", "wc"])
@@ -40,4 +37,25 @@ r = Raster(ra.data, dims; missingval=0f0); # 数据类型要一致
 
 write("lambda_24.tif", r2, force=true)
 plot(r[:, :, 1]; colorrange=[0.01, 50])
+```
+
+## 2. 然后转到ggplot2进行绘图
+
+```{r}
+library(Ipaper)
+library(terra)
+library(tidyterra)
+# pak::pkg_install("tidyterra")
+# install.packages("tidyterra")
+```
+
+```{r}
+r = rast("./OUTPUT/global_param_D24_lambda_cv_2018-2022.tif")
+# plot(r)
+```
+
+```{r}
+write_fig({
+  plot(r)
+}, 'Figure1.pdf', 10, 5, show=F)
 ```
