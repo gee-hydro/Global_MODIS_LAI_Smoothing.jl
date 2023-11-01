@@ -106,8 +106,9 @@ function st_location(r::Raster, points::Vector{Tuple{T,T}}) where {T<:Real}
   inds, locs
 end
 
-function st_extract(ra::Raster, points)
+function st_extract(ra::Raster, points::Vector{Tuple{T,T}}; combine=hcat) where {T<:Real}
   inds, locs = st_location(ra, points)
-  lst = [ra.data[i, j, :] for (i, j) in locs]
-  inds, cbind(lst...)
+  cols = repeat([:], ndims(ra) - 2)
+  lst = [ra.data[i, j, cols...] for (i, j) in locs]
+  inds, combine(lst...) #cbind(lst...)
 end

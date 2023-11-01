@@ -47,8 +47,11 @@ function big_heatmap!(ax, x, y, z; fact=10, kw...)
   handle
 end
 
+"""
+- `fun!`: 只接受两个参数，其他需要放在`kw...`。
+"""
 function map_on_mouse(ax, handle_plot, slon, slat;
-  verbose=false, (fun!)=nothing)
+  verbose=false, (fun!)=nothing, kw...)
 
   on(events(fig).mousebutton, priority=2) do event
     if event.button == Mouse.left && event.action == Mouse.press
@@ -65,7 +68,7 @@ function map_on_mouse(ax, handle_plot, slon, slat;
       slat[] = pos[2]
       verbose && @show slon[], slat[]
       if (fun!) !== nothing
-        fun!(slon[], slat[])
+        fun!(slon[], slat[]; kw...)
       end
     end
     return Consume(false)

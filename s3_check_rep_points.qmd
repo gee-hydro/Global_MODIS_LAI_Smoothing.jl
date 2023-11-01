@@ -28,6 +28,16 @@ dates = @pipe dateInfo |> _[_.year.>=2018, :date]
 ## load data
 l = load(fout)
 @unpack st, mat_LAI, mat_QC = l
+
+function get_input(i)
+  y = mat_LAI[:, i]
+  qc = mat_QC[:, i]
+  missval = UInt8(255)
+  y[y.==missval] .= UInt8(0)
+  qc[qc.==missval] .= UInt8(0)
+  (; y=y * 0.1f0, qc)
+end
+
 ```
 
 ## 读取lambda
@@ -37,83 +47,83 @@ f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing
 ds = open_dataset(f)
 z = ds["grid.2_4"].data
 b = st_bbox(z)
-ra = Raster(z, st_bbox(z); missingval=0f0)
+ra = Raster(z, st_bbox(z); missingval=0.0f0)
 
 lims = ((b.xmin, b.xmax), (b.ymin, b.ymax))
 ```
 
+```{julia}
+@time ra2 = Raster(z[:, :, 1], st_bbox(z); missingval=0.0f0)
+@time λs = st_extract(ra2, points)[2][:];
+```
 
 ```{julia}
 points = st_dims.(st.geometry)
 xx, yy = st_dims(st.geometry)
 i = Observable(1)
 
-station = @lift st[$i, :]
+d = @lift get_input($i)
+# station = @lift st[$i, :]
 point = @lift points[$i]
 slon = @lift $point[1]
 slat = @lift $point[2]
 
-y = @lift mat_LAI[:, $i] * 0.1f0
-qc = @lift mat_QC[:, $i]
-
 ## 拟合
-l = @lift smooth_whit($y, $qc, dates;
-  adj_factor=5,
-  iters=3,
-  wFUN=wBisquare_Kong2023,
-  options=(trs_high=0.7, trs_low=0.4, trs_bg=0.2, step=0.3)
-);
+function process_whit(d; kw...)
+  dat = deepcopy(d)
+  smooth_whit(dat.y, dat.qc, dates;
+    adj_factor=5, iters=3,
+    wFUN=wBisquare_Kong2023,
+    options=(trs_high=0.7, trs_low=0.4, trs_bg=0.2, step=0.3, kw...)
+  )
+end
 
-dat = @lift $l["data"]
-dfit = @lift $l["predict"]
-```
+λ = @lift λs[$i]
+l  = @lift process_whit($d; λ=$λ)
+l2 = @lift process_whit($d;)
 
-```{julia}
 fig = Figure(resolution=(2400, 900), outer_padding=2) # figure_padding = 10
-ax = Axis(fig[1, 1], title="站点的空间分布", limits=lims)
+ax = Axis(fig[1, 1], title="Parameter: λ", limits=lims)
 plt = plot!(ax, ra[:, :, 1], colorscale=log10)
 Colorbar(fig[1, 2], plt, height=Relative(0.4), tellwidth=true)
 
-xx, yy = locs
-GLMakie.scatter!(ax, xx, yy; marker=:cross, 
+GLMakie.scatter!(ax, xx, yy; marker=:cross,
   markersize=14, strokewidth=0,
   color="red", strokecolor="blue")
+GLMakie.scatter!(ax, slon, slat; marker=:cross,
+  markersize=20, strokewidth=0,
+  color="blue")
 
-map_on_mouse(ax, plt, slon, slat; verbose=true)
+function fun_on_click!(slon, slat)
+  i[] = findnear((slon, slat), points)
+end
+map_on_mouse(ax, plt, slon, slat; (fun!)= fun_on_click!,verbose=true)
 
 ## 另外做一个站点分布的图
-ax_time = Axis(fig[1, 3], title="这里是第几个站点")
-makie_plot_input!(ax_time, dat[])
-makie_plot_fitting!(ax_time, dfit[])
-set_xticks!(ax_time, dates)
+## 一个是自动率定获得的参数
+
+function plot_whit_fitting(fig, l; title=nothing)
+  title == nothing && (title = @lift @sprintf("site: %d, λ=%.3f", $i, λs[$i]))
+  
+  ax_time = Axis(fig, title=title)
+  set_xticks!(ax_time, dates)
+
+  dat = @lift $l["data"]
+  dfit = @lift $l["predict"]
+  plts_input = makie_plot_input(ax_time, dat[]) # 全部都在这里
+  plts_fit = makie_plot_fitting(ax_time, dfit[])
+
+  onany(dat, dfit) do dat, dfit
+    ylims = -0.1f0, maximum(dat.y) + 0.5f0
+    ax_time.limits[] = (nothing, ylims)
+    makie_plot_input(ax_time, dat; plts=plts_input)
+    makie_plot_fitting(ax_time, dfit; plts=plts_fit)
+  end
+end
+
+sub = fig[1, end+1]
+plot_whit_fitting(sub[1, 1], l)
+plot_whit_fitting(sub[2, 1], l2; title="auto lambda")
 
 fig
 ```
-
-
-## 实战绘图
-
-```{julia}
-```
-
-
-```{julia}
-my_theme!()
-
-fig = Figure(resolution=(3000, 900), outer_padding=2) # figure_padding = 10
-
-ax_point = Axis(fig[1, 1], title = "站点的空间分布")
-GLMakie.scatter!(ax_point, locs...)
-
-
-
-fig
-```
-
-```{julia}
-## 定义个app, app中存放的有数据与函数
-# @time dist(p1, points);
-@time findnear(p1, points)
-```
-
-> 缺少了`lambda`数据
