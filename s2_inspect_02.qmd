@@ -1,10 +1,9 @@
 ```{julia}
 using Revise
-using Ipaper
-import DataStructures: OrderedDict
 includet("src/main_makie.jl")
 includet("src/zarr.jl")
 includet("src/main_Terra.jl")
+includet("src/MODISTools.jl")
 ```
 
 ```{julia}
@@ -16,10 +15,10 @@ grids = names(ds)
 
 lst = OrderedDict(grids[i] => (; z = zs[i], b = bs[i]) 
     for i in eachindex(zs))
-fact = 5
 
-lst5 = OrderedDict(grids[i] => (; z = resample2(zs[i]; fact=5, deepcopy=true), 
-    b = bs[i]) for i in eachindex(zs))
+fact = 5
+# lst5 = OrderedDict(grids[i] => (; z = resample2(zs[i]; fact=5, deepcopy=true), 
+#     b = bs[i]) for i in eachindex(zs))
 ```
 
 ## Plot for shapefile
@@ -29,12 +28,14 @@ using GLMakie
 using GLMakie.GeometryBasics: Polygon, Point2f0, Point2f
 using DataFrames
 
-f_shp = "/mnt/z/GitHub/shapefiles/world_poly.shp"
+f_shp = path_mnt("/mnt/z/GitHub/shapefiles/world_poly.shp")
 shp = DataFrame(Shapefile.Table(f_shp));
 
 ra = rast("OUTPUT/global_param_D24_lambda_cv_2018-2022.tif")
 r2 = st_resample(ra[:, :, 1])
 ```
+
+## lambda的这个模块已经写完，继续往下写Whittaker平滑的部分
 
 ```{julia}
 glon = Observable(101.0f0)
@@ -62,7 +63,7 @@ plt = terra_heatmap!(ax, r2;
     # colorrange=(0, 3), 
     colorscale=log10)
 # plot_poly!(ax, shp)
-# poly!(ax, rect, color=nan_color, strokewidth=2, strokecolor=:red)
+poly!(ax, rect, color=nan_color, strokewidth=2, strokecolor=:red)
 Colorbar(f1[1, 2], plt, height=Relative(0.4), tellwidth=true, tellheight=false)
 
 kw_line = (; color=:red, linestyle=:dash, linewidth=1)

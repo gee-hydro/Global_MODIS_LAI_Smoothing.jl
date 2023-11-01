@@ -1,13 +1,30 @@
 using Terra
 using Zarr
 using Shapefile
-st_dims(x::Shapefile.Point) = x.x, x.y
+using YAXArrays
+
+
+Terra.st_bbox(ds::YAXArrays.Dataset) = st_bbox.(get_zarr(ds)) # multiple
+
+function get_zarr(ds::YAXArrays.Dataset)
+  vars = names(ds)
+  zs = map(var -> ds[var].data, vars)
+  zs
+end
+
+st_dims(x::Union{Missing,Shapefile.Point}) = x.x, x.y
+
+function st_dims(xs::Vector{T}) where {T<:Union{Missing,Shapefile.Point}}
+  points = st_dims.(xs)
+  x = [p[1] for p in points]
+  y = [p[2] for p in points]
+  x, y
+end
 
 bbox2lims(b::bbox) = ((b.xmin, b.xmax), (b.ymin, b.ymax))
 
 Terra.st_bbox(z::ZArray) = Terra.bbox(z.attrs["bbox"]...)
 Terra.st_bbox(zs::Vector{<:ZArray}) = st_bbox(st_bbox.(zs))
-Terra.st_bbox(ds::YAXArrays.Dataset) = st_bbox.(get_zarr(ds)) # multiple
 
 function st_dims(r::Raster)
   x = r.dims[1].val.data
@@ -34,7 +51,7 @@ end
 st_resample(x::AbstractArray; fact=10) = resample2(x; fact)
 
 function st_resample(z::ZArray; fact=10, missingval=0)
-  dat = resample2(z)
+  dat = resample2(z; fact)
   Raster(dat, st_bbox(z); missingval)
 end
 
@@ -50,34 +67,16 @@ function st_resample(zs::Vector{<:ZArray}; fact=10, missingval=0)
   st_mosaic(res; missingval)
 end
 
-function get_zarr(ds::YAXArrays.Dataset)
-  vars = names(ds)
-  zs = map(var -> ds[var].data, vars)
-  zs
-end
-
 ## 判断哪个grid被选择了
 in_bbox(b::bbox, (lon, lat)) = (b.xmin < lon < b.xmax) && (b.ymin < lat < b.ymax)
 
 in_bbox(bs::Vector{bbox}, (lon, lat)) = [in_bbox(b, (lon, lat)) for b in bs]
-
-function findnear(values, x)
-  _, i = findmin(abs.(values .- x))
-  values[i], i
-end
 
 function select_grid(ds, (lon, lat))
   zs = get_zarr(ds)
   bs = st_bbox.(zs)
   inds = in_bbox(bs, (lon, lat)) |> findall
   !isempty(inds) ? names(ds)[inds[1]] : nothing
-end
-
-
-## extract data
-function rm_empty(x)
-  inds = findall(!isnothing, x)
-  inds, x[inds]
 end
 
 function st_location((x, y)::Tuple{Real,Real};

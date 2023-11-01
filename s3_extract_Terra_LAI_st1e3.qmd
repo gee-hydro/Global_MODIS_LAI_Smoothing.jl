@@ -3,8 +3,8 @@
 cd("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
 using Revise
 
-includet("../src/MODISTools.jl")
-includet("../src/main_Terra.jl")
+includet("src/MODISTools.jl")
+# includet("src/main_Terra.jl")
 
 indir = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc")
 fs = [
@@ -39,24 +39,22 @@ function extract_LAI(fs::Vector{String}, points)
   res
 end
 
-## NCDatasets多线程为何无法运行
-function Base.merge(xs::Vector{<:NamedTuple})
-  keys = Base.keys(xs[1])
-  values = [vcat(map(x -> x[name], xs)...) for name in keys]
-  (; zip(keys, values)...)
-end
-
 res = [extract_LAI(f, points) for f in fs]
+mat_LAI, mat_QC = merge(res, keys=[:LAI, :QC])
+st2 = res[1].st
+# r.st = res[1].st
 # @time ra_LAI = Raster(f; key=:LAI)
 # @time ra_QC = Raster(f; key=:QcExtra)
 ```
 
 ```{julia}
 using JLD2
-jldsave("sampledData.jld2"; r...)
+fout = "INPUT/sampled_st1e3_2018-2022_grid,2_4.jld2"
+jldsave(fout; st=st2, mat_LAI, mat_QC)
 # st_sel, mat_LAI, mat_QC = merge(res);
 ```
 
+## 转到whittaker的模块
 ```{julia}
-load("sampledData.jld2")
+load(fout)
 ```

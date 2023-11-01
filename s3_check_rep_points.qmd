@@ -1,0 +1,119 @@
+```{julia}
+cd("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
+using Revise
+
+# includet("src/main_Terra.jl")
+includet("src/MODISTools.jl")
+includet("src/main_makie.jl")
+includet("src/main_whit_makie.jl")
+```
+
+```{julia}
+# include("main_pkgs.jl")
+using Whittaker2
+using Ipaper
+using Shapefile
+
+using GLMakie
+using UnPack
+using RTableTools
+using JLD2
+
+dir_proj = path_mnt("/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
+
+dateInfo = fread("$dir_proj/data/MODIS_LAI_dateInfo.csv")
+fout = "$dir_proj/INPUT/sampled_st1e3_2018-2022_grid,2_4.jld2"
+dates = @pipe dateInfo |> _[_.year.>=2018, :date]
+
+## load data
+l = load(fout)
+@unpack st, mat_LAI, mat_QC = l
+```
+
+## 读取lambda
+
+```{julia}
+f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr" |> path_mnt
+ds = open_dataset(f)
+z = ds["grid.2_4"].data
+b = st_bbox(z)
+ra = Raster(z, st_bbox(z); missingval=0f0)
+
+lims = ((b.xmin, b.xmax), (b.ymin, b.ymax))
+```
+
+
+```{julia}
+points = st_dims.(st.geometry)
+xx, yy = st_dims(st.geometry)
+i = Observable(1)
+
+station = @lift st[$i, :]
+point = @lift points[$i]
+slon = @lift $point[1]
+slat = @lift $point[2]
+
+y = @lift mat_LAI[:, $i] * 0.1f0
+qc = @lift mat_QC[:, $i]
+
+## 拟合
+l = @lift smooth_whit($y, $qc, dates;
+  adj_factor=5,
+  iters=3,
+  wFUN=wBisquare_Kong2023,
+  options=(trs_high=0.7, trs_low=0.4, trs_bg=0.2, step=0.3)
+);
+
+dat = @lift $l["data"]
+dfit = @lift $l["predict"]
+```
+
+```{julia}
+fig = Figure(resolution=(2400, 900), outer_padding=2) # figure_padding = 10
+ax = Axis(fig[1, 1], title="站点的空间分布", limits=lims)
+plt = plot!(ax, ra[:, :, 1], colorscale=log10)
+Colorbar(fig[1, 2], plt, height=Relative(0.4), tellwidth=true)
+
+xx, yy = locs
+GLMakie.scatter!(ax, xx, yy; marker=:cross, 
+  markersize=14, strokewidth=0,
+  color="red", strokecolor="blue")
+
+map_on_mouse(ax, plt, slon, slat; verbose=true)
+
+## 另外做一个站点分布的图
+ax_time = Axis(fig[1, 3], title="这里是第几个站点")
+makie_plot_input!(ax_time, dat[])
+makie_plot_fitting!(ax_time, dfit[])
+set_xticks!(ax_time, dates)
+
+fig
+```
+
+
+## 实战绘图
+
+```{julia}
+```
+
+
+```{julia}
+my_theme!()
+
+fig = Figure(resolution=(3000, 900), outer_padding=2) # figure_padding = 10
+
+ax_point = Axis(fig[1, 1], title = "站点的空间分布")
+GLMakie.scatter!(ax_point, locs...)
+
+
+
+fig
+```
+
+```{julia}
+## 定义个app, app中存放的有数据与函数
+# @time dist(p1, points);
+@time findnear(p1, points)
+```
+
+> 缺少了`lambda`数据

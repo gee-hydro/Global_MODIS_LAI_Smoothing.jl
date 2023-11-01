@@ -1,5 +1,6 @@
 # module MODISTools
 
+includet("main_Ipaper.jl")
 includet("MFDataset.jl")
 includet("zarr.jl")
 includet("main_whit.jl")
