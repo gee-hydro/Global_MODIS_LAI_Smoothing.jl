@@ -1,5 +1,4 @@
 #! /usr/bin/bash
-# 
 
 dir_root=$(dirname "$0")
 dir_root=`realpath "$dir_root"`
@@ -14,6 +13,8 @@ user="kjding93@gmail.com"
 col=projects/gee-hydro/MODIS_Terra_LAI/global_param_lambda_cv
 
 geeup upload --source $indir --dest $col -m $meta --nodata 0 -u $user
+
+# https://code.earthengine.google.com/da8b3de1af58eb6f45db3836f2011514
 
 # options:
 #   -h, --help            show this help message and exit

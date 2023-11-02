@@ -2,7 +2,7 @@
 println(Threads.nthreads())
 
 using Revise
-includet("src/MODISTools.jl")
+includet("../src/MODISTools.jl")
 
 
 function nanmaximum(x::AbstractVector{T}) where {T}
