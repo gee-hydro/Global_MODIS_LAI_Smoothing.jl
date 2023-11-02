@@ -1,8 +1,8 @@
-#! julia -t 12 s1_param_lambda.jl
+#! julia -t 15 s1_param_lambda.jl
 println(Threads.nthreads())
 
 using Revise
-includet("src/MODISTools.jl")
+includet("../src/MODISTools.jl")
 
 method = "cv"
 overwrite = false
@@ -21,19 +21,19 @@ function process_whit_chunk(d;)
   m = MFDataset(d.file, chunkszie)
   
   res = mapslices_3d_zarr(p, pixel_cal_lambda, m; n_run=nothing, method)
+  GC.gc()
 end
 
 # _dateInfo = @pipe dateInfo |> _[(year_min.<=_.year.<=year_max), :]
 # dates = _dateInfo.date
 
-iters = collect(Iterators.product(1:5, reverse(all_grids)))
+iters = collect(Iterators.product(all_grids, 1:4))
 for i = eachindex(iters)
   I = iters[i]
-  k, grid = I
+  grid, k = I
 
   year_min, year_max = info_group[k, [:year_min, :year_max]]
   d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
-
   process_whit_chunk(d)
 end
 

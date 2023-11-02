@@ -4,6 +4,7 @@ import Zarr: ConcurrentRead, NoCompressor, BloscCompressor, ZlibCompressor
 using DiskArrays: GridChunks
 using JSON
 using Terra
+using ArchGDAL
 includet("main_Terra.jl")
 
 # chunks = GridChunks(sizes[1], chunksize)
@@ -96,5 +97,30 @@ function chunk_task_finished!(z::ZArray, ichunk, value=true)
   f = "$(z.storage.folder)/$(z.path)/.zattrs"
   open(f, "w") do fid
     JSON.print(fid, z.attrs)
+  end
+end
+
+
+function st_ds2tiff(ds::YAXArrays.Dataset; 
+  prefix = "lambda_cv_2018-2022", outdir="OUTPUT/GEE", overwrite=false)
+  
+  @par for grid in names(ds)
+    grid2 = gsub(grid, "grid.", "grid")
+    fout = "$outdir/$(prefix)_$grid2.tif"
+
+    z = ds[grid].data
+    b = st_bbox(z)
+    # lims = ((b.xmin, b.xmax), (b.ymin, b.ymax))
+    λ = @view z[:, :, 1] # 只保存lambda
+    ra = Raster(λ, b; missingval=0.0f0, crs=EPSG(4326))
+
+    if !isfile(fout) || overwrite
+      @show fout
+      # GEE不支持默认的数据压缩方式
+      # options=Dict("COMPRESS"=>"LZW")
+      @time write(fout, ra;
+        options=Dict("COMPRESS" => "DEFLATE"),
+        force=true)
+    end
   end
 end

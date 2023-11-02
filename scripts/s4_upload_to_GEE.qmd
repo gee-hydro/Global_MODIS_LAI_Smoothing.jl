@@ -1,0 +1,50 @@
+# Tools
+
+- https://geeup.geetools.xyz/projects/image_upload/
+- https://geeup.geetools.xyz/projects/cookies_setup/
+
+> 数据上传需要使用cookie
+
+```{julia}
+# cd("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
+using Revise
+
+# includet("src/main_Terra.jl")
+includet("../src/MODISTools.jl")
+# includet("src/main_makie.jl")
+# includet("src/main_whit_makie.jl")
+```
+
+## 读取lambda
+
+```{julia}
+f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr" |> path_mnt
+ds = open_dataset(f)
+
+st_ds2tiff(ds; prefix = "lambda_cv_2018-2022")
+# z = ds["grid.2_4"].data
+# b = st_bbox(z)
+# lims = ((b.xmin, b.xmax), (b.ymin, b.ymax))
+
+# λ = @view z[:, :, 1]
+# ra = Raster(λ, b; missingval=0.0f0, crs=EPSG(4326))
+```
+
+```{julia}
+
+
+```
+
+```{julia}
+run(`
+  geeup getmeta --input OUTPUT/GEE --metadata gee_info.csv
+`)
+
+```
+
+```{julia}
+run(`
+  geeup upload --source "full path to folder with GeoTIFFs" --dest "Full path for upload to Google Earth Engine, e.g., users/pinkiepie/myponycollection" --metadata "Full path for metadata file.csv" --nodata 0 --pyramids MEAN
+
+`)
+```
