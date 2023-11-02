@@ -1,16 +1,16 @@
 """
-- `n_run`: run how many chunks, default all
+- `chunks`: which chunks to run, default all.
 """
 function mapslices_3d!(z::ZArray,
-  f::Function, m::MFDataset, InVars=m.bands; n_run=nothing, parallel=true, kw...)
+  f::Function, m::MFDataset, InVars=m.bands; 
+  chunks=nothing, parallel=true, overwrite=false, kw...)
 
   # nlon, nlat = m.sizes[1][1:2]
   # progress = Progress(nlon * nlat)
-  n_run === nothing && (n_run = length(m.chunks))
+  chunks === nothing && (chunks = 1:length(m.chunks))
 
-  ## 算完然后再切另一块数据
-  for k in 1:n_run
-    chunk_task_finished(z, k) && continue
+  for k in chunks
+    (chunk_task_finished(z, k) && !overwrite) && continue
     
     printstyled("\t[chunk=$k] reading data ...\n", color=:blue, bold=true)
     ii, jj, _ = m.chunks[k]
@@ -34,7 +34,7 @@ end
 - `p`: the path of zarr
 """
 function mapslices_3d_zarr(p::String,
-  f::Function, m::MFDataset, InVars=m.bands; n_run=nothing, overwrite=false, kw...)
+  f::Function, m::MFDataset, InVars=m.bands; overwrite=false, kw...)
   # _data = map(band -> m[band][1:1, 1:1], InVars) # this is a list of data
   # r = mapslices_3d_chunk(f, _data...; kw...)
 
@@ -56,5 +56,5 @@ function mapslices_3d_zarr(p::String,
     z = zopen(p, "w")
   end
   println(z)
-  mapslices_3d!(z, f, m, InVars; n_run, kw...)
+  mapslices_3d!(z, f, m, InVars; kw...)
 end

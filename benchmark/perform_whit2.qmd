@@ -1,0 +1,64 @@
+## 初始化
+
+```{julia}
+#! julia -t 15 s1_param_lambda.jl
+println(Threads.nthreads())
+using Revise
+includet("../src/MODISTools.jl")
+method = "cv"
+
+iters = collect(Iterators.product(all_grids, 1:4))
+
+i = 3
+chunks = [12]
+```
+
+## 测试性能
+
+```{julia}
+I = iters[i]
+grid, k = I
+year_min, year_max = info_group[k, [:year_min, :year_max]]
+d = @pipe info |> _[(year_min.<=_.year.<=year_max).&&(_.grid.==grid), :]
+
+year_min = minimum(d.year)
+year_max = maximum(d.year)
+
+grid = d.grid[1]
+outdir = "OUTPUT/debug_$(method)_$year_min-$(year_max).zarr"
+p = "$outdir/grid.$grid"
+
+println("\n=============================================")
+@show p
+chunkszie = (240 * 20, 240 * 10, typemax(Int))
+m = MFDataset(d.file, chunkszie)
+
+# res = mapslices_3d_zarr(p, pixel_cal_lambda, m; chunks, method, overwrite=true);
+# @time LAI, QC = get_chunk(m, 18);
+# @time r = mapslices_3d_chunk(pixel_cal_lambda, LAI, QC; option=2);
+```
+
+## reading data
+
+```{julia}
+k = 12
+@time l_data = get_chunk(m, k;)
+```
+
+```{julia}
+@time r = mapslices_3d_chunk(pixel_cal_lambda, l_data...; option=2);
+# 86.080744 seconds (307.30 M allocations: 102.722 GiB, 20.36% gc time, 6.65% compilation time
+# @time r = mapslices_3d_chunk(pixel_cal_lambda, l_data...; option=1);
+```
+
+## 重现bug
+
+```{julia}
+n = m.ntime
+w = zeros(Float32, n)
+interm = interm_whit{Float32}(; n)
+kw = (; w, interm)
+
+# @profview_allocs 
+@time r = mapslices_3d_chunk(pixel_cal_lambda, l_data...; option=1, kw...);
+```
