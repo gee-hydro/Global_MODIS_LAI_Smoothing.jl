@@ -40,7 +40,7 @@ r2 = st_resample(ra[:, :, 1])
 ```{julia}
 glon = Observable(101.0f0)
 glat = Observable(31.0f0)
-ggrid = @lift select_grid(ds, ($glon, $glat))
+ggrid = @lift which_grid(ds, ($glon, $glat))
 
 b = @lift lst[$ggrid].b
 rect = @lift bbox2rect($b)

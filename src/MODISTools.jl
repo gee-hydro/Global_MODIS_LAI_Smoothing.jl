@@ -1,15 +1,11 @@
 # module MODISTools
-
-includet("main_Ipaper.jl")
-includet("MFDataset.jl")
-includet("zarr.jl")
-includet("main_whit.jl")
-includet("mapslices_3d_chunk.jl")
-includet("mapslices_3d.jl")
-includet("mapslices_3d_zarr.jl")
-
+import DataStructures: OrderedDict
 using DataFrames
 using RTableTools
+
+includet("main_Terra.jl")
+includet("main_whit.jl")
+
 
 
 function getFileInfo()

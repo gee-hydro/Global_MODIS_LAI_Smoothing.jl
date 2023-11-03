@@ -5,6 +5,7 @@ using Revise
 includet("../src/MODISTools.jl")
 
 method = "cv"
+method = "vcurve"
 overwrite = false
 
 function process_whit_chunk(d;)
@@ -12,7 +13,8 @@ function process_whit_chunk(d;)
   year_max = maximum(d.year)
 
   grid = d.grid[1]
-  outdir = "OUTPUT/global_param_lambda_$(method)_$year_min-$(year_max).zarr"
+  prefix = "lambda_$method"
+  outdir = "./OUTPUT/global_param_$prefix/$(prefix)_$year_min-$(year_max).zarr"
   p = "$outdir/grid.$grid"
   
   println("\n=============================================")
