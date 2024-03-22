@@ -1,3 +1,10 @@
+using ArchGDAL
+using Shapefile
+using Terra
+using YAXArrays
+using Zarr
+# using Zarr: ConcurrentRead
+# Zarr.store_read_strategy(::DirectoryStore) = ConcurrentRead(Zarr.concurrent_io_tasks[])
 using Whittaker2
 using Statistics
 

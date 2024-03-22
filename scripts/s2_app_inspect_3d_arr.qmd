@@ -1,21 +1,23 @@
 ## 1. 加载数据 ------------------------------------------------------------------
 
 ```{julia}
-includet("src/main_makie.jl")
-includet("src/zarr.jl")
+using Rasters
+using Terra
+includet("../src/main_makie.jl")
+# includet("../src/zarr.jl")
 
 using Ipaper
 using YAXArrays
 using Zarr
 
-f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr" |> path_mnt
+f = "OUTPUT/global_param_lambda_cv/lambda_cv_2018-2022.zarr" |> path_mnt
 ds = open_dataset(f)
 
 grids = names(ds) |> sort
 z = ds["grid.2_4"].data
 
 b = Terra.bbox(z.attrs["bbox"]...)
-lon, lat = bbox2dims(b)
+lon, lat = bbox2dims(b; cellsize=1/240)
 lon = collect(lon)
 lat = collect(lat)
 
@@ -43,7 +45,7 @@ lambda[lambda.==0] .= NaN;
 my_theme!(font_size=24)
 style_line = (; linestyle=:dash, color=:red, linewidth=2)
 
-fig = Figure(resolution=(1900, 800), outer_padding=2) # figure_padding = 10
+fig = Figure(size=(1900, 800), outer_padding=2) # figure_padding = 10
 
 sg = SliderGrid(fig[1, 2], (label="time", range=time, startvalue=middle(time)))
 stime = sg.sliders[1].value
@@ -51,9 +53,9 @@ stime = sg.sliders[1].value
 slon = Observable(middle(lon))
 slat = Observable(middle(lat))
 
-i = @lift findnear(lon, $slon)[2]
-j = @lift findnear(lat, $slat)[2]
-k = @lift findnear(time, $stime)[2]
+i = @lift findnear($slon, lon)
+j = @lift findnear($slat, lat)
+k = @lift findnear($stime, time)
 
 str_pos = @lift @sprintf("Position: i=%d, j=%d", $i, $j)
 label_pos = Label(fig[1, 1], str_pos, fontsize=30, tellwidth=false)

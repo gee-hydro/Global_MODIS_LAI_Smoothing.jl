@@ -3,10 +3,8 @@ import DataStructures: OrderedDict
 using DataFrames
 using RTableTools
 
-includet("main_Terra.jl")
+
 includet("main_whit.jl")
-
-
 
 function getFileInfo()
   dir_root = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc/")
