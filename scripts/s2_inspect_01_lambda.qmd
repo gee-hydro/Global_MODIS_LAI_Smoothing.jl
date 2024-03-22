@@ -1,22 +1,22 @@
 ## 1. 加载数据
 
 ```{julia}
-includet("src/main_makie.jl")
-includet("src/zarr.jl")
+includet("../src/main_makie.jl")
+# includet("src/zarr.jl")
 
 using Ipaper
 using YAXArrays
 using Zarr
 using ArchGDAL
 
-f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr" |> path_mnt
+f = "OUTPUT/global_param_lambda_cv/lambda_cv_2018-2022.zarr" |> path_mnt
 ds = open_dataset(f)
 
 grids = names(ds) |> sort
 z = ds["grid.2_4"].data
 # z = ds[3].data
 b = Terra.bbox(z.attrs["bbox"]...)
-lon, lat = bbox2dims(b)
+lon, lat = bbox2dims(b; cellsize=1/240)
 lon = collect(lon)
 lat = collect(lat)
 

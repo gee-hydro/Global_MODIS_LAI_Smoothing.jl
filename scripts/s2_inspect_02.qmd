@@ -7,15 +7,16 @@ includet("src/MODISTools.jl")
 ```
 
 ```{julia}
-f = "/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/OUTPUT/global_param_lambda_cv_2018-2022.zarr" |> path_mnt
+f = "OUTPUT/global_param_lambda_cv/lambda_cv_2018-2022.zarr" |> path_mnt
+
 ds = open_dataset(f)
 zs = get_zarr(ds)
 bs = st_bbox.(zs)
 grids = names(ds)
 
-lst = OrderedDict(grids[i] => (; z = zs[i], b = bs[i]) 
-    for i in eachindex(zs))
-
+lst = OrderedDict(grids[i] => (; z=zs[i], b=bs[i])
+                  for i in eachindex(zs))
+                  
 fact = 5
 # lst5 = OrderedDict(grids[i] => (; z = resample2(zs[i]; fact=5, deepcopy=true), 
 #     b = bs[i]) for i in eachindex(zs))

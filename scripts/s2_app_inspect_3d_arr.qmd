@@ -1,5 +1,7 @@
 ## 1. 加载数据 ------------------------------------------------------------------
 
+> 这里是一个半成品，仅用来展示`lambda`
+
 ```{julia}
 using Rasters
 using Terra
@@ -76,14 +78,13 @@ ax_xy = Axis(plot_main, title=@lift(@sprintf("XY剖面图: time = %d", $stime)),
   xlabel="Latitude", ylabel="Longitude")
 
 # nan_color = RGBA(1.0, 0.0, 0.0, 0.5)
-
 zlims = [0, 50]
 plt = big_heatmap!(ax_xy, lon, lat, lambda; nan_color, colorrange=zlims)
 Colorbar(fig[:, 0], plt, height=Relative(0.5))
 vlines!(ax_xy, slon; style_line...)
 hlines!(ax_xy, slat; style_line...)
 
-map_on_mouse(fig, plt, slon, slat)
+map_on_mouse(ax_xy, slon, slat)
 map_on_keyboard(fig, slon, slat, stime, cellx, celly; step=500)
 
 colgap!(fig.layout, 0)

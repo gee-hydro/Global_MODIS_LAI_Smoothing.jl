@@ -13,3 +13,5 @@ temp
 *.txt
 *.pdf
 OUTPUT
+
+*.png

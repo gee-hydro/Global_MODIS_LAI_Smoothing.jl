@@ -50,22 +50,25 @@ end
 """
 - `fun!`: 只接受两个参数，其他需要放在`kw...`。
 """
-function map_on_mouse(ax, handle_plot, slon, slat;
+function map_on_mouse(ax, slon, slat;
   verbose=false, (fun!)=nothing, kw...)
 
-  on(events(fig).mousebutton, priority=2) do event
+  on(events(ax).mousebutton, priority=2) do event
     if event.button == Mouse.left && event.action == Mouse.press
       # plt, i = pick(ax)
       pos = mouseposition(ax)
       # 如果不在axis范围内
-      if ax.limits[] !== nothing
-        xlim, ylim = ax.limits[]
-        if !((xlim[1] <= pos[1] <= xlim[2]) && (ylim[1] <= pos[2] <= ylim[2]))
-          return Consume(false)
-        end
+      xlim = ax.xaxis.attributes.limits[]
+      ylim = ax.yaxis.attributes.limits[]
+      # xlim, ylim = ax.limits[]
+      # if !isnothing(xlim) && !isnothing(ylim)
+
+      if !((xlim[1] <= pos[1] <= xlim[2]) && (ylim[1] <= pos[2] <= ylim[2]))
+        return Consume(false)
       end
       slon[] = pos[1]
       slat[] = pos[2]
+
       verbose && @show slon[], slat[]
       if (fun!) !== nothing
         fun!(slon[], slat[]; kw...)

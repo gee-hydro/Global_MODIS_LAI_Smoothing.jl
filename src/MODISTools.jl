@@ -2,7 +2,8 @@
 import DataStructures: OrderedDict
 using DataFrames
 using RTableTools
-
+using Rasters
+using Terra
 
 includet("main_whit.jl")
 

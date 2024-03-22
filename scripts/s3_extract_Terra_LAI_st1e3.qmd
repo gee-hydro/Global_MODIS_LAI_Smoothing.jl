@@ -3,7 +3,7 @@
 cd("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
 using Revise
 
-includet("src/MODISTools.jl")
+includet("../src/MODISTools.jl")
 # includet("src/main_Terra.jl")
 
 indir = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc")
@@ -52,9 +52,4 @@ using JLD2
 fout = "INPUT/sampled_st1e3_2018-2022_grid,2_4.jld2"
 jldsave(fout; st=st2, mat_LAI, mat_QC)
 # st_sel, mat_LAI, mat_QC = merge(res);
-```
-
-## 转到whittaker的模块
-```{julia}
-load(fout)
 ```
