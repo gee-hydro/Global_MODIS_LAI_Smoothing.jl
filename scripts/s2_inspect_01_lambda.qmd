@@ -3,7 +3,6 @@
 ```{julia}
 includet("../src/main_makie.jl")
 # includet("src/zarr.jl")
-
 using Ipaper
 using YAXArrays
 using Zarr
@@ -15,8 +14,8 @@ ds = open_dataset(f)
 grids = names(ds) |> sort
 z = ds["grid.2_4"].data
 # z = ds[3].data
-b = Terra.bbox(z.attrs["bbox"]...)
-lon, lat = bbox2dims(b; cellsize=1/240)
+b = bbox(z.attrs["bbox"]...)
+lon, lat = bbox2dims(b; cellsize=1 / 240)
 lon = collect(lon)
 lat = collect(lat)
 
@@ -24,19 +23,18 @@ cellx, celly = bbox2cellsize(b, size(z))
 time = 1:229
 @time lambda = z[:, :, 1];
 lambda[lambda.==0] .= NaN;
+
+zs = get_zarr(ds);
 ```
 
 ```{julia}
 fact = 10
-@time ra = st_resample(zs; fact);
+@time rs = st_resample.(zs; fact);
 GC.gc()
-
-band = Rasters.Band(["lambda", "ymin", "ymax", "wc"])
-dims = ra.dims[1:2]..., band
-r = Raster(ra.data, dims; missingval=0f0); # 数据类型要一致
-
-write("lambda_24.tif", r2, force=true)
-plot(r[:, :, 1]; colorrange=[0.01, 50])
+r2 = st_mosaic(rs)
+r2.bands = ["lambda", "ymin", "ymax", "wc"]
+st_write(r2,"lambda_24.tif")
+# plot(r[:, :, 1]; colorrange=[0.01, 50])
 ```
 
 ## 2. 然后转到ggplot2进行绘图

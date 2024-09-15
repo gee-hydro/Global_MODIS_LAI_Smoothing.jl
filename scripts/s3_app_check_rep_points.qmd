@@ -6,7 +6,6 @@ using UnPack, JLD2
 using Ipaper, RTableTools
 import Ipaper.sf: st_extract
 # using YAXArrays
-# cd(path_mnt("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing"))
 
 # includet("src/main_Terra.jl")
 includet("../src/MODISTools.jl")
@@ -22,7 +21,6 @@ dateInfo = fread("$dir_proj/data/MODIS_LAI_dateInfo.csv")
 fout = "$dir_proj/INPUT/sampled_st1e3_2018-2022_grid,2_4.jld2"
 dates = @pipe dateInfo |> _[_.year.>=2018, :date]
 
-## load data
 l = load(fout)
 @unpack st, mat_LAI, mat_QC = l
 

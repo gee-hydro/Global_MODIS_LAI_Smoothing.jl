@@ -1,13 +1,32 @@
-using GLMakie
-using Colors
-using DimensionalData
-using JLD2
-using Statistics
-using Printf
+using GLMakie, Colors
+using DimensionalData, JLD2
+using Statistics, Printf
 using Ipaper.sf
-# using NaNStatistics
-# includet("MFDataset.jl")
+using MakieLayers
+import MakieLayers: imagesc!
 
+
+function bind_ra!(plt, ra::Observable{<:SpatRaster})
+  on(ra) do ra
+    lon, lat = st_dims(ra)
+    plt[1] = lon
+    plt[2] = lat
+    plt[3] = ra.A
+  end
+  plt
+end
+
+function imagesc_obs!(ax, ra::Observable{<:SpatRaster}, args...; kwargs...)
+  plt = imagesc!(ax, ra[], args...; kwargs...)
+  bind_ra!(plt, ra)
+end
+
+function imagesc!(ax, ra::SpatRaster, args...; kwargs...)
+  lon, lat = st_dims(ra)
+  imagesc!(ax, lon, lat, ra.A, args...; kwargs...)
+end
+
+# includet("MFDataset.jl")
 nan_color = RGBA(1.0, 1.0, 1.0, 0.2)
 
 ## functions for makie 
@@ -20,14 +39,12 @@ function my_theme!(; font_size=24)
 end
 
 function terra_heatmap!(ax, r::SpatRaster; missingval=nothing, kw...)
-  missingval === nothing && (missingval = r.missingval)
-
+  # missingval === nothing && (missingval = r.missingval)
   x, y = st_dims(r)
-  z = r.data
-  T = eltype(r)
-
-  z[z.==T(missingval)] .= T(NaN)
-  heatmap!(ax, x, y, z; kw...)
+  z = r.A
+  # T = eltype(r)
+  # z[z.==T(missingval)] .= T(NaN)
+  imagesc!(ax, x, y, z; kw...)
 end
 
 function sbig_heatmap!(ax, x, y, z; fact=10, kw...)
