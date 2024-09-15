@@ -1,0 +1,25 @@
+```{r}
+library(sf)
+library(ggplot2)
+library(Ipaper)
+
+shp_grid = read_sf("Z:/Researches/PMLV2/Whittaker2.jl/scripts/Project_Global_LAI_smoothing/data/shp/modis_grids.shp")
+shp_continent = read_sf("Z:/GitHub/cug-hydro/R_for_Hydrology/data-raw/shp/continent.shp")
+```
+
+```{r}
+p <- ggplot() + 
+  geom_sf(data = shp_continent) + 
+  geom_sf(data = shp_grid, fill = "transparent", color = "red") + 
+  geom_sf_text(data = shp_grid, aes(label = label)) + 
+  labs(x = NULL, y = NULL) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(-60, 90)) + 
+  scale_x_continuous(expand = c(0, 0), limits = c(-180, 180))
+
+write_fig(p, 'Figures/FigureS1_MODIS_grid.pdf', 10, 5)
+```
+
+# 研究先集中在两个grid
+
+- 2-3: 华北
+- 2-2: 华南

@@ -1,8 +1,11 @@
 ```{julia}
 using Revise
-using Ipaper
-using Rasters
-using YAXArrays
+using Whittaker2
+using GLMakie, Shapefile
+using UnPack, JLD2
+using Ipaper, RTableTools
+import Ipaper.sf: st_extract
+# using YAXArrays
 # cd(path_mnt("Z:/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing"))
 
 # includet("src/main_Terra.jl")
@@ -12,16 +15,6 @@ includet("../src/main_whit_makie.jl")
 ```
 
 ```{julia}
-# include("main_pkgs.jl")
-using Whittaker2
-using Ipaper
-using Shapefile
-
-using GLMakie
-using UnPack
-using RTableTools
-using JLD2
-
 # dir_proj = path_mnt("/mnt/z/GitHub/jl-spatial/Whittaker2.jl/scripts/Project_Global_LAI_smoothing")
 dir_proj = "./"
 
@@ -47,26 +40,26 @@ end
 ## 读取lambda
 
 ```{julia}
+nodata = 0.0f0
 f = "OUTPUT/global_param_lambda_cv/lambda_cv_2018-2022.zarr" |> path_mnt
 
 ds = open_dataset(f)
 z = ds["grid.2_4"].data
 b = st_bbox(z)
-ra = Raster(z, st_bbox(z); missingval=0.0f0)
+ra = rast(z, st_bbox(z))
 lims = ((b.xmin, b.xmax), (b.ymin, b.ymax))
 ```
 
 ```{julia}
 pnts = st_dims.(st.geometry)
-xx, yy = st_dims(st.geometry)
+xx, yy = st_dims(pnts)
 
-@time ra2 = Raster(z[:, :, 1], st_bbox(z); missingval=0.0f0)
+@time ra2 = rast(z[:, :, 1], st_bbox(z);)
 @time λs = st_extract(ra2, pnts)[2][:];
 ```
 
 ```{julia}
 i = Observable(1)
-
 d = @lift get_input($i)
 # station = @lift st[$i, :]
 point = @lift pnts[$i]
@@ -87,25 +80,22 @@ end
 l  = @lift process_whit($d; λ=$λ)
 l2 = @lift process_whit($d;)
 
-fig = Figure(size=(2400, 900), outer_padding=2) # figure_padding = 10
+fig = Figure(size=(1600, 700), outer_padding=2) # figure_padding = 10
 ax = Axis(fig[1, 1], title="Parameter: λ", limits=lims)
-plt = plot!(ax, ra[:, :, 1], colorscale=log10)
+plt = imagesc!(ax, ra[:, :, 1], colorscale=log10, colorrange=(1, 100))
 Colorbar(fig[1, 2], plt, height=Relative(0.4), tellwidth=true)
 
 GLMakie.scatter!(ax, xx, yy; marker=:cross,
   markersize=14, strokewidth=0,
   color="red", strokecolor="blue")
 GLMakie.scatter!(ax, slon, slat; marker=:cross,
-  markersize=20, strokewidth=0,
-  color="blue")
+  markersize=20, strokewidth=0, color="blue")
+# fig
 
 function fun_on_click!(slon, slat)
   i[] = findnear((slon, slat), pnts)
 end
 map_on_mouse(ax, slon, slat; (fun!)= fun_on_click!,verbose=true)
-
-## 另外做一个站点分布的图
-## 一个是自动率定获得的参数
 
 function plot_whit_fitting(fig, l; title=nothing)
   title == nothing && (title = @lift @sprintf("site: %d, λ=%.3f", $i, λs[$i]))
@@ -132,3 +122,6 @@ plot_whit_fitting(sub[2, 1], l2; title="auto lambda")
 
 fig
 ```
+
+> 另外做一个站点分布的图
+> 一个是自动率定获得的参数

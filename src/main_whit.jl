@@ -1,6 +1,5 @@
 using ArchGDAL
 using Shapefile
-using Terra
 using YAXArrays
 using Zarr
 # using Zarr: ConcurrentRead

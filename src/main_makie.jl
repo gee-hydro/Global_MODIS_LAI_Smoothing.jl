@@ -4,6 +4,7 @@ using DimensionalData
 using JLD2
 using Statistics
 using Printf
+using Ipaper.sf
 # using NaNStatistics
 # includet("MFDataset.jl")
 
@@ -18,7 +19,7 @@ function my_theme!(; font_size=24)
   set_theme!(mytheme)
 end
 
-function terra_heatmap!(ax, r::Raster; missingval=nothing, kw...)
+function terra_heatmap!(ax, r::SpatRaster; missingval=nothing, kw...)
   missingval === nothing && (missingval = r.missingval)
 
   x, y = st_dims(r)

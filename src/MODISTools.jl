@@ -1,11 +1,11 @@
 # module MODISTools
 import DataStructures: OrderedDict
 using DataFrames
-using RTableTools
-using Rasters
-using Terra
+using Ipaper, RTableTools
 
+includet("Zarr.jl")
 includet("main_whit.jl")
+includet("main_Ipaper.jl")
 
 function getFileInfo()
   dir_root = path_mnt("/mnt/z/MODIS/Terra_LAI_v061_nc/")
@@ -26,3 +26,4 @@ info_group = DataFrame(;
 )
 
 dateInfo = fread("data/MODIS_LAI_dateInfo.csv")
+dateInfo = dateInfo[[1:814; 816:end], :]

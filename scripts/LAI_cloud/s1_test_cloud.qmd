@@ -1,0 +1,53 @@
+
+```{julia}
+using Ipaper
+using Revise
+includet("../../src/MODISTools.jl")
+
+# method = "cv"
+# method = "vcurve"
+# overwrite = false
+
+using NetCDFTools
+using RTableTools
+```
+
+```{julia}
+import NetCDFTools: nc_date
+
+function nc_date(m::MFDataset)
+  dates = map(f -> nc_date(f), m.fs)
+  cat(dates..., dims=1)
+end
+```
+
+
+```{julia}
+grids = ["2_3", "2_2"]
+GRID = grids[1]
+# all_grids
+
+## 需要计算一个SVI
+fs = @pipe info |> _[_.grid.==GRID, :file]
+f = fs[1]
+
+chunkszie = (240 * 20, 240 * 20, typemax(Int))
+m = MFDataset(fs, chunkszie)
+# info_grid
+```
+
+```{julia}
+## 识别短期洪水与长期洪水
+chunks = m.chunks
+chunk = chunks[1][1:2]
+
+lai = @time m["LAI"][chunk...]; # LAI
+qc = @time m["QcExtra"][chunk...]; # LAI
+```
+
+```{julia}
+nc_info(f)
+```
+
+## 这里需要写一个测试函数
+
